@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>건강테스트 - IRIS MAPPING LAB</title>
+  <link rel="stylesheet" href="styles.css?v=20260620-health-expanded-2">
+</head>
+<body class="health-page">
+  <main class="health-shell">
+    <header class="health-topbar">
+      <div class="auth-brand main-brand">
+        <span class="auth-logo" aria-hidden="true"></span>
+        <strong>IRIS MAPPING LAB</strong>
+      </div>
+      <button class="home-btn" type="button">홈으로</button>
+    </header>
+
+    <section class="health-form-card">
+      <div class="health-form-heading">
+        <p class="eyebrow">HEALTH CHECK</p>
+        <h1>건강테스트</h1>
+        <p>현재 건강 상태를 확인하기 위한 간단한 설문입니다. 홍채 분석 결과와 함께 참고 자료로 활용됩니다.</p>
+      </div>
+
+      <form id="healthTestForm" class="health-test-form">
+        <section class="test-section" aria-labelledby="basicTitle">
+          <div class="section-heading">
+            <span>01</span>
+            <h2 id="basicTitle">기본 정보</h2>
+          </div>
+          <div class="basic-fields">
+            <fieldset class="question-item">
+              <legend>성별 <b>*</b></legend>
+              <div class="choice-row compact">
+                <label><input type="radio" name="gender" value="남성" required> 남성</label>
+                <label><input type="radio" name="gender" value="여성"> 여성</label>
+              </div>
+            </fieldset>
+            <label class="text-field">나이 <b>*</b>
+              <input type="number" name="age" min="1" max="120" inputmode="numeric" required placeholder="예: 45">
+            </label>
+            <label class="text-field">키(cm) <b>*</b>
+              <input type="number" name="height" min="50" max="250" step="0.1" inputmode="decimal" required placeholder="예: 170">
+            </label>
+            <label class="text-field">몸무게(kg) <b>*</b>
+              <input type="number" name="weight" min="20" max="300" step="0.1" inputmode="decimal" required placeholder="예: 65">
+            </label>
+          </div>
+        </section>
+
+        <div id="questionSections"></div>
+
+        <section class="test-section" aria-labelledby="diagnosisTitle">
+          <div class="section-heading">
+            <span>09</span>
+            <h2 id="diagnosisTitle">진단 질환 및 주요 증상</h2>
+          </div>
+          <fieldset class="question-item diagnosis-field">
+            <legend>현재까지 진단받은 질환 <b>*</b></legend>
+            <div class="diagnosis-options wide-checklist">
+              <label><input type="checkbox" name="diagnoses" value="고혈압"> 고혈압</label>
+              <label><input type="checkbox" name="diagnoses" value="저혈압"> 저혈압</label>
+              <label><input type="checkbox" name="diagnoses" value="고지혈증"> 고지혈증</label>
+              <label><input type="checkbox" name="diagnoses" value="부정맥"> 부정맥</label>
+              <label><input type="checkbox" name="diagnoses" value="협심증·심근경색"> 협심증·심근경색</label>
+              <label><input type="checkbox" name="diagnoses" value="뇌졸중·뇌혈관질환"> 뇌졸중·뇌혈관질환</label>
+              <label><input type="checkbox" name="diagnoses" value="당뇨"> 당뇨</label>
+              <label><input type="checkbox" name="diagnoses" value="갑상선질환"> 갑상선질환</label>
+              <label><input type="checkbox" name="diagnoses" value="비만"> 비만</label>
+              <label><input type="checkbox" name="diagnoses" value="통풍"> 통풍</label>
+              <label><input type="checkbox" name="diagnoses" value="천식"> 천식</label>
+              <label><input type="checkbox" name="diagnoses" value="만성기관지염·COPD"> 만성기관지염·COPD</label>
+              <label><input type="checkbox" name="diagnoses" value="폐질환"> 폐렴·기타 폐질환</label>
+              <label><input type="checkbox" name="diagnoses" value="수면무호흡"> 수면무호흡</label>
+              <label><input type="checkbox" name="diagnoses" value="위염·위궤양"> 위염·위궤양</label>
+              <label><input type="checkbox" name="diagnoses" value="역류성식도염"> 역류성식도염</label>
+              <label><input type="checkbox" name="diagnoses" value="과민성대장증후군"> 과민성대장증후군</label>
+              <label><input type="checkbox" name="diagnoses" value="염증성장질환"> 염증성장질환</label>
+              <label><input type="checkbox" name="diagnoses" value="간질환·지방간"> 간질환·지방간</label>
+              <label><input type="checkbox" name="diagnoses" value="담낭·담석질환"> 담낭·담석질환</label>
+              <label><input type="checkbox" name="diagnoses" value="췌장질환"> 췌장질환</label>
+              <label><input type="checkbox" name="diagnoses" value="신장질환"> 신장질환</label>
+              <label><input type="checkbox" name="diagnoses" value="요로결석"> 요로결석</label>
+              <label><input type="checkbox" name="diagnoses" value="전립선질환"> 전립선질환</label>
+              <label><input type="checkbox" name="diagnoses" value="방광질환"> 방광질환</label>
+              <label><input type="checkbox" name="diagnoses" value="빈혈"> 빈혈</label>
+              <label><input type="checkbox" name="diagnoses" value="혈액질환"> 기타 혈액질환</label>
+              <label><input type="checkbox" name="diagnoses" value="관절염"> 관절염</label>
+              <label><input type="checkbox" name="diagnoses" value="목·허리디스크"> 목·허리디스크</label>
+              <label><input type="checkbox" name="diagnoses" value="골다공증"> 골다공증</label>
+              <label><input type="checkbox" name="diagnoses" value="편두통·신경질환"> 편두통·신경질환</label>
+              <label><input type="checkbox" name="diagnoses" value="우울·불안장애"> 우울·불안장애</label>
+              <label><input type="checkbox" name="diagnoses" value="자가면역·류마티스"> 자가면역·류마티스</label>
+              <label><input type="checkbox" name="diagnoses" value="알레르기질환"> 알레르기질환</label>
+              <label><input type="checkbox" name="diagnoses" value="암"> 암</label>
+              <label><input type="checkbox" name="diagnoses" value="없음"> 없음</label>
+              <label><input type="checkbox" name="diagnoses" value="기타"> 기타</label>
+            </div>
+            <p id="diagnosisError" class="field-error" hidden>한 가지 이상 선택해 주세요.</p>
+          </fieldset>
+
+          <div class="supplemental-fields">
+            <label class="text-field">기타 진단 질환
+              <input type="text" name="otherDiagnosis" placeholder="목록에 없는 진단 질환을 입력해 주세요.">
+            </label>
+            <label class="text-field">가장 걱정되는 질환 <b>*</b>
+              <input type="text" name="worriedDisease" required placeholder="현재 가장 걱정되는 질환을 입력해 주세요.">
+            </label>
+          </div>
+
+          <fieldset class="question-item diagnosis-field expanded-field">
+            <legend>통증을 느끼는 부위 <b>*</b></legend>
+            <div class="diagnosis-options">
+              <label><input type="checkbox" name="painAreas" value="머리·얼굴"> 머리·얼굴</label>
+              <label><input type="checkbox" name="painAreas" value="목"> 목</label>
+              <label><input type="checkbox" name="painAreas" value="어깨"> 어깨</label>
+              <label><input type="checkbox" name="painAreas" value="가슴"> 가슴</label>
+              <label><input type="checkbox" name="painAreas" value="등"> 등</label>
+              <label><input type="checkbox" name="painAreas" value="허리"> 허리</label>
+              <label><input type="checkbox" name="painAreas" value="상복부"> 상복부</label>
+              <label><input type="checkbox" name="painAreas" value="하복부·골반"> 하복부·골반</label>
+              <label><input type="checkbox" name="painAreas" value="팔·팔꿈치"> 팔·팔꿈치</label>
+              <label><input type="checkbox" name="painAreas" value="손목·손"> 손목·손</label>
+              <label><input type="checkbox" name="painAreas" value="엉덩이·고관절"> 엉덩이·고관절</label>
+              <label><input type="checkbox" name="painAreas" value="허벅지·종아리"> 허벅지·종아리</label>
+              <label><input type="checkbox" name="painAreas" value="무릎"> 무릎</label>
+              <label><input type="checkbox" name="painAreas" value="발목·발"> 발목·발</label>
+              <label><input type="checkbox" name="painAreas" value="전신"> 전신</label>
+              <label><input type="checkbox" name="painAreas" value="통증 없음"> 통증 없음</label>
+              <label><input type="checkbox" name="painAreas" value="기타"> 기타</label>
+            </div>
+            <p id="painAreaError" class="field-error" hidden>한 가지 이상 선택해 주세요.</p>
+          </fieldset>
+
+          <fieldset class="question-item diagnosis-field expanded-field">
+            <legend>가족력 <b>*</b></legend>
+            <div class="diagnosis-options">
+              <label><input type="checkbox" name="familyHistory" value="고혈압"> 고혈압</label>
+              <label><input type="checkbox" name="familyHistory" value="당뇨"> 당뇨</label>
+              <label><input type="checkbox" name="familyHistory" value="고지혈증"> 고지혈증</label>
+              <label><input type="checkbox" name="familyHistory" value="심장질환"> 심장질환</label>
+              <label><input type="checkbox" name="familyHistory" value="뇌졸중"> 뇌졸중</label>
+              <label><input type="checkbox" name="familyHistory" value="암"> 암</label>
+              <label><input type="checkbox" name="familyHistory" value="치매"> 치매</label>
+              <label><input type="checkbox" name="familyHistory" value="정신건강질환"> 정신건강질환</label>
+              <label><input type="checkbox" name="familyHistory" value="갑상선질환"> 갑상선질환</label>
+              <label><input type="checkbox" name="familyHistory" value="신장질환"> 신장질환</label>
+              <label><input type="checkbox" name="familyHistory" value="간질환"> 간질환</label>
+              <label><input type="checkbox" name="familyHistory" value="가족력 없음"> 가족력 없음</label>
+              <label><input type="checkbox" name="familyHistory" value="기타"> 기타</label>
+            </div>
+            <p id="familyHistoryError" class="field-error" hidden>한 가지 이상 선택해 주세요.</p>
+          </fieldset>
+
+          <label class="text-field symptoms-field">가장 불편한 증상 3가지 <b>*</b>
+            <textarea name="topSymptoms" rows="4" required placeholder="가장 불편한 증상을 최대 3가지 입력해 주세요."></textarea>
+          </label>
+        </section>
+
+        <p class="health-disclaimer">본 테스트는 건강관리 참고용이며 의학적 진단이나 치료를 대체하지 않습니다.</p>
+        <div class="health-submit-bar">
+          <p id="healthSaveStatus" role="status" aria-live="polite"></p>
+          <button class="health-save-btn" type="submit">건강테스트 저장</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const frequencyOptions = ["전혀 아니다", "가끔", "자주", "거의 매일"];
+    const severityOptions = ["없음", "가끔", "자주", "매우 심함"];
+    const swellingOptions = ["전혀 아니다", "가끔", "자주", "매우 심함"];
+    const sections = [
+      { title: "수면", questions: [
+        ["sleepDifficulty", "잠들기 어렵다", frequencyOptions],
+        ["tiredAfterSleep", "자고 일어나도 피곤하다", frequencyOptions],
+        ["wakeAtDawn", "새벽에 자주 깬다", frequencyOptions]
+      ] },
+      { title: "소화", questions: [
+        ["indigestion", "소화가 잘 안 된다", frequencyOptions],
+        ["bloating", "속이 자주 더부룩하다", frequencyOptions],
+        ["constipation", "변비가 있다", frequencyOptions],
+        ["diarrhea", "설사가 잦다", frequencyOptions],
+        ["acidReflux", "위산 역류가 있다", frequencyOptions]
+      ] },
+      { title: "호흡", questions: [
+        ["cough", "기침이 자주 난다", frequencyOptions],
+        ["phlegm", "가래가 자주 생긴다", frequencyOptions],
+        ["rhinitis", "비염이 있다", frequencyOptions],
+        ["bronchialCondition", "천식 또는 기관지 질환이 있다", frequencyOptions]
+      ] },
+      { title: "순환 및 생활습관", questions: [
+        ["coldHandsFeet", "손발이 차다", frequencyOptions],
+        ["bloodPressureMedicine", "혈압약을 복용 중이다", frequencyOptions],
+        ["palpitations", "가슴 두근거림이 있다", frequencyOptions],
+        ["alcoholTwiceWeekly", "술을 주 2회 이상 마신다", frequencyOptions],
+        ["fatigue", "쉽게 피로해진다", frequencyOptions],
+        ["redEyes", "눈이 자주 충혈된다", frequencyOptions]
+      ] },
+      { title: "비뇨 및 부종", questions: [
+        ["nocturia", "밤에 화장실을 자주 간다", frequencyOptions],
+        ["swollenLegs", "다리가 자주 붓는다", swellingOptions],
+        ["darkUrine", "소변 색이 진하다", swellingOptions]
+      ] },
+      { title: "여성 건강", questions: [
+        ["menstrualPain", "생리통이 심하다", severityOptions],
+        ["irregularCycle", "생리주기가 불규칙하다", severityOptions]
+      ] },
+      { title: "스트레스 및 정서", questions: [
+        ["stress", "스트레스를 많이 받는다", frequencyOptions],
+        ["depression", "우울감을 자주 느낀다", frequencyOptions],
+        ["anxiety", "불안감이 있다", frequencyOptions]
+      ] }
+    ];
+
+    const questionSections = document.querySelector("#questionSections");
+    questionSections.innerHTML = sections.map((section, sectionIndex) => `
+      <section class="test-section">
+        <div class="section-heading">
+          <span>${String(sectionIndex + 2).padStart(2, "0")}</span>
+          <h2>${section.title}</h2>
+        </div>
+        <div class="question-list">
+          ${section.questions.map(([name, question, options]) => `
+            <fieldset class="question-item">
+              <legend>${question} <b>*</b></legend>
+              <div class="choice-row">
+                ${options.map((option, optionIndex) => `
+                  <label>
+                    <input type="radio" name="${name}" value="${option}" ${optionIndex === 0 ? "required" : ""}>
+                    <span>${option}</span>
+                  </label>
+                `).join("")}
+              </div>
+            </fieldset>
+          `).join("")}
+        </div>
+      </section>
+    `).join("");
+
+    const form = document.querySelector("#healthTestForm");
+    const saveStatus = document.querySelector("#healthSaveStatus");
+
+    function setupCheckboxGroup(name, noneValue, errorSelector) {
+      const inputs = [...document.querySelectorAll(`[name="${name}"]`)];
+      const noneInput = inputs.find((input) => input.value === noneValue);
+      const error = document.querySelector(errorSelector);
+
+      inputs.forEach((input) => input.addEventListener("change", () => {
+        if (input === noneInput && input.checked) {
+          inputs.forEach((item) => {
+            if (item !== noneInput) item.checked = false;
+          });
+        } else if (input.checked && noneInput) {
+          noneInput.checked = false;
+        }
+        error.hidden = inputs.some((item) => item.checked);
+      }));
+
+      return { name, inputs, error };
+    }
+
+    const checkboxGroups = [
+      setupCheckboxGroup("diagnoses", "없음", "#diagnosisError"),
+      setupCheckboxGroup("painAreas", "통증 없음", "#painAreaError"),
+      setupCheckboxGroup("familyHistory", "가족력 없음", "#familyHistoryError")
+    ];
+
+    document.querySelector(".home-btn").addEventListener("click", () => {
+      location.href = "index.html";
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const invalidGroup = checkboxGroups.find((group) => !group.inputs.some((input) => input.checked));
+      if (invalidGroup) {
+        invalidGroup.error.hidden = false;
+        invalidGroup.inputs[0].focus();
+        return;
+      }
+
+      const data = new FormData(form);
+      const answers = Object.fromEntries(data.entries());
+      checkboxGroups.forEach((group) => {
+        answers[group.name] = data.getAll(group.name);
+      });
+      const result = { createdAt: new Date().toISOString(), answers };
+      localStorage.setItem("irisHealthTestResult", JSON.stringify(result));
+      saveStatus.textContent = "건강테스트가 이 기기에 저장되었습니다.";
+    });
+
+    const savedResult = localStorage.getItem("irisHealthTestResult");
+    if (savedResult) {
+      try {
+        const { answers } = JSON.parse(savedResult);
+        Object.entries(answers || {}).forEach(([name, value]) => {
+          const values = Array.isArray(value) ? value : [value];
+          document.querySelectorAll(`[name="${name}"]`).forEach((input) => {
+            if (input.type === "radio" || input.type === "checkbox") {
+              input.checked = values.includes(input.value);
+            } else {
+              input.value = value;
+            }
+          });
+        });
+        saveStatus.textContent = "이전에 저장한 응답을 불러왔습니다.";
+      } catch (error) {
+        localStorage.removeItem("irisHealthTestResult");
+      }
+    }
+  </script>
+</body>
+</html>

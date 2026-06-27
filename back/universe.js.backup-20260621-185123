@@ -1,0 +1,207 @@
+(function(){
+  "use strict";
+  const $=(selector)=>document.querySelector(selector);
+  const sessionPhone=IrisCareEngine.normalizePhone(localStorage.getItem("irisMappingSession"));
+  const subscriptionKey=sessionPhone?`irisSubscription:${sessionPhone}`:"irisSubscription";
+  const reportKey=sessionPhone?`UniverseReportDB:${sessionPhone}`:"UniverseReportDB";
+  const subscription=readJson(subscriptionKey)||{};
+  const memberRecord=(readJson("irisMappingUsers")||{})[sessionPhone]||{};
+  const healthBoxHistory=readJson(sessionPhone?`irisHealthBoxHistory:${sessionPhone}`:"")||[];
+  const purchaseHistory=readJson(sessionPhone?`irisPurchaseHistory:${sessionPhone}`:"")||[];
+  const analysis=IrisCareEngine.analyze(sessionPhone);
+  const isSubscriber=subscription.status==="관리 중"&&Boolean(subscription.plan);
+  let currentReport=null;
+
+  const AREA_RULES=[
+    rule("mouth","구강·치주",["K05","K04","치주","치은","구내","치아","농양"],["치과","치주","잇몸","치아"],[1,10],"구강 위생과 정기 검진 기록을 함께 관리하세요.",18,14),
+    rule("stomach","위·소화기",["K30","K21","K25","K26","K27","K29","오메프라졸","란소프라졸","레바미피드","모사프리드","소화불량","위장약"],["소화","속이","복부","역류","위산"],[4],"식사 리듬과 자극적인 음식 반응을 기록하세요.",42,43),
+    rule("skin","피부·연조직",["D21","D23","D36","피부","연조직","조직병리"],["피부","여드름","발진","가려움","두피","탈모"],[1,10],"피부 변화와 환경 노출 시점을 함께 기록하세요.",16,29),
+    rule("neck","목·얼굴",["D210","목","얼굴","두경부","편도","성대"],["목통증","목 통증","편도","성대","갑상선"],[10],"목·어깨 긴장과 호흡기 불편의 반복 여부를 살펴보세요.",24,22),
+    rule("infection","감염·염증",["항생제","세팔로","아목시","클라불란","감염","염증"],["감기","염증","감염","편도","비염"],[2,3,8,10],"반복되는 불편과 회복 기간을 날짜별로 기록하세요.",78,24),
+    rule("female","여성생식",["N70","N71","N72","N73","N75","N76","메트로니다졸","질염","난소","자궁"],["생리","질염","분비물","여성","자궁","난소"],[5,6],"주기 변화와 반복되는 불편을 함께 확인하세요.",38,66,"female"),
+    rule("male","남성생식",["N40","N41","N42","전립선"],["전립선","배뇨","남성"],[5,6],"배뇨 변화와 관련 검진 기록을 함께 확인하세요.",38,66,"male"),
+    rule("bowel","장",["K50","K51","K52","K57","K58","K59","장염","변비","설사"],["변비","설사","장","배변","복부"],[7,8],"배변 리듬과 음식 반응을 꾸준히 기록하세요.",45,48),
+    rule("inflammation","염증·통증",["소염","진통","이부프로펜","나프록센","아세클로페낙","통증"],["통증","관절","허리","무릎","어깨"],[5,6,10],"반복 통증의 위치와 악화 습관을 기록하세요.",78,58),
+    rule("liver","간",["K70","K71","K72","K73","K74","K75","K76","R74","간수치","간질환"],["간수치","간질환","지방간","음주","피로"],[7],"음주·복용 성분과 간 기능 검사 추이를 확인하세요.",35,39),
+    rule("lung","폐·기관지",["J12","J13","J14","J15","J18","J20","J21","J40","J41","J42","J43","J44","기관지","폐렴","천식"],["기침","가래","천식","기관지","호흡"],[2,3,9],"호흡 불편과 흡연·분진 노출을 함께 관리하세요.",38,31),
+    rule("pancreas","췌장",["K85","K86","E10","E11","E13","혈당","당대사","췌장"],["혈당","당뇨","과식","단 음식","췌장"],[4],"식사 간격과 혈당 관련 검진 수치를 기록하세요.",41,48),
+    rule("kidney","신장",["N00","N01","N02","N03","N04","N05","N10","N11","N12","N17","N18","N19","신장","콩팥"],["부종","소변","신장","콩팥","야간뇨"],[5,6],"수분 섭취와 부종·배뇨 변화를 함께 살펴보세요.",63,48),
+    rule("thyroid","갑상선",["E03","E04","E05","E06","갑상선"],["갑상선","목 앞","호르몬"],[10],"기능 검사와 피로·체중 변화를 함께 기록하세요.",24,18),
+    rule("lymph","림프",["I88","D72","림프","임파선"],["림프","부종","면역"],[8,10],"부종과 회복 상태, 반복 감염 여부를 살펴보세요.",70,34),
+    rule("brain","뇌·신경",["G40","G43","G44","G47","F41","F43","두통","불면","신경"],["두통","수면","불면","스트레스","불안","집중","신경"],[11,12],"수면·긴장·집중력의 변화를 우선 기록하세요.",24,10),
+    rule("circulation","순환",["I10","I11","I20","I21","I25","I34","I35","I36","I37","I47","I48","I49","E78","혈압","고지혈","순환"],["혈압","두근거림","순환","손발이 차","고지혈"],[8,9],"혈압·활동량·수면과 정기 검사 추이를 확인하세요.",24,34),
+    rule("breast","유방",["N60","N61","N62","N63","유방","유선"],["유방","가슴 멍울"],[9],"정기 검진 일정과 자가 관찰 기록을 관리하세요.",34,28,"female")
+  ];
+  const POSITION={mouth:[30,13],stomach:[29,38],skin:[18,35],neck:[29,20],infection:[77,24],female:[29,57],male:[29,57],bowel:[30,46],inflammation:[80,58],liver:[26,36],lung:[31,28],pancreas:[35,40],kidney:[72,42],thyroid:[34,21],lymph:[69,29],brain:[70,10],circulation:[25,29],breast:[34,30]};
+
+  initialize();
+
+  function rule(id,name,pdfTerms,healthTerms,irisHours,direction,left,top,gender){return{id,name,pdfTerms,healthTerms,irisHours,direction,left,top,gender}}
+  function readJson(key){try{return JSON.parse(localStorage.getItem(key)||"null")}catch(_){return null}}
+  function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]))}
+  function safeText(value){return String(value??"").replace(new RegExp("\uC554","g"),"중증 질환").replace(/진단/g,"의료 기록").replace(/확정/g,"확인")}
+  function normalizeText(value){return String(value||"").replace(/\s+/g," ").trim()}
+  function unique(items){return[...new Set(items.filter(Boolean))]}
+  function clamp(value,min=0,max=100){return Math.max(min,Math.min(max,Math.round(value)))}
+
+  function initialize(){
+    $("#lockedView").hidden=isSubscriber;
+    $("#subscriberView").hidden=!isSubscriber;
+    if(!isSubscriber)return;
+    if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"}
+    $("#pdfInput").addEventListener("change",handlePdf);
+    $("#saveReportButton").addEventListener("click",saveCurrentReport);
+    renderStoredHistory();
+  }
+
+  async function handlePdf(event){
+    const file=event.target.files?.[0];
+    if(!file)return;
+    if(file.type!=="application/pdf"&&!file.name.toLowerCase().endsWith(".pdf")){setStatus("PDF 파일만 선택할 수 있습니다.");return}
+    if(!window.pdfjsLib){setStatus("PDF 분석 모듈을 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 다시 열어주세요.");return}
+    try{
+      setStatus("PDF 텍스트를 추출하고 병력·검사·투약 기록을 정리하고 있습니다.");
+      const extracted=await extractPdfText(file);
+      if(extracted.text.length<20)throw new Error("PDF에서 읽을 수 있는 텍스트가 충분하지 않습니다. 스캔 이미지 PDF는 문자 인식 처리가 필요합니다.");
+      currentReport=buildUniverseReport(extracted.text,file.name,extracted.pages);
+      renderReport(currentReport);
+      setStatus("분석이 완료되었습니다. 내용을 확인한 뒤 분석 결과 저장을 눌러주세요.");
+    }catch(error){console.error(error);setStatus(error.message||"PDF 분석 중 오류가 발생했습니다.")}
+  }
+
+  async function extractPdfText(file){
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
+    const pages=[];
+    for(let pageNumber=1;pageNumber<=pdf.numPages;pageNumber+=1){
+      const page=await pdf.getPage(pageNumber);
+      const content=await page.getTextContent();
+      pages.push(content.items.map((item)=>item.str).join(" "));
+    }
+    return{text:pages.join("\n"),pages:pdf.numPages};
+  }
+
+  function buildUniverseReport(rawText,fileName,pageCount){
+    const text=normalizeText(rawText);
+    const memberName=extractMemberName(text);
+    const logs=extractLogs(text);
+    const previous=getHistory().at(-1)||null;
+    const healthText=analysis.findings.map((item)=>`${item.label} ${item.value}`).join(" ");
+    const familyText=analysis.findings.filter((item)=>/가족|아버지|어머니|형제|자매/.test(item.label)).map((item)=>`${item.label} ${item.value}`).join(" ");
+    const irisTop=getTopIrisObservations();
+    const boxItems=subscription.box||unique(analysis.primary.flatMap((item)=>item.box)).slice(0,8);
+    const scores=AREA_RULES.filter((area)=>isAreaApplicable(area)).map((area)=>{
+      const pdfMatches=countMatches(text,area.pdfTerms);
+      const medicalHistory=pdfMatches>0;
+      const repeated=pdfMatches>1;
+      const medications=logs.medications.filter((item)=>area.pdfTerms.some((term)=>item.context.includes(term)||item.name.includes(term)));
+      const exams=logs.exams.filter((item)=>area.pdfTerms.some((term)=>item.context.includes(term))||generalExamMatches(area,item.name));
+      const irisMatches=irisTop.filter((item)=>area.irisHours.includes(item.hour));
+      const healthMatches=analysis.findings.filter((item)=>area.healthTerms.some((term)=>`${item.label} ${item.value}`.includes(term)));
+      const familyMatches=area.healthTerms.filter((term)=>familyText.includes(term));
+      const lifestyleMatches=getLifestyleMatches(area,healthText);
+      const managed=boxItems.some((item)=>area.healthTerms.some((term)=>item.includes(term)))||analysis.primary.some((item)=>item.hours?.some((hour)=>area.irisHours.includes(hour)));
+      let score=(medicalHistory?20:0)+(repeated?15:0)+(medications.length?10:0)+(exams.length?15:0)+(irisMatches.length?20:0)+(healthMatches.length?20:0)+(lifestyleMatches.length?15:0)+(familyMatches.length?10:0)-(managed?10:0);
+      const previousScore=previous?.부위별점수JSON?.find((item)=>item.id===area.id)?.score;
+      let change="첫 기록";
+      if(Number.isFinite(previousScore)){
+        if(score<=previousScore-5){score-=10;change="개선 흐름"}
+        else if(score>=previousScore+5){score+=10;change="주의 증가"}
+        else change="유지";
+      }
+      score=clamp(score);
+      return{...area,score,level:riskLevel(score),pdfMatches,medicalHistory,repeated,medications,exams,irisMatches,healthMatches,familyMatches,lifestyleMatches,managed,change,evidence:collectAreaEvidence(text,area)};
+    }).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,"ko"));
+    const topFive=scores.slice(0,5);
+    const shoppingIngredients=unique(analysis.primary.flatMap((item)=>item.ingredients)).slice(0,6);
+    const record={
+      회원번호:memberRecord.memberNo||sessionPhone,회원명:memberName,업로드일:new Date().toISOString(),PDF파일URL:fileName,PDF페이지수:pageCount,
+      추출텍스트:rawText.slice(0,200000),진료로그JSON:logs.visits,진단로그JSON:logs.diagnoses,검사로그JSON:logs.exams,투약로그JSON:logs.medications,
+      부위별점수JSON:scores,TOP5부위JSON:topFive.map(compactArea),홍채매칭결과JSON:topFive.flatMap((area)=>area.irisMatches.map((item)=>({부위:area.name,눈:item.eyeLabel,영역:item.code,관찰부위:item.area,점수:item.score}))),
+      문진매칭결과JSON:topFive.flatMap((area)=>area.healthMatches.map((item)=>({부위:area.name,문항:item.label,응답:item.value}))),
+      최종리포트문구:buildFinalText(topFive),구독회차:getHistory().length+1,건강박스JSON:boxItems,추천성분JSON:shoppingIngredients,
+      생활습관점수JSON:analysis.scores,건강박스이력JSON:healthBoxHistory,구매이력JSON:purchaseHistory
+    };
+    return record;
+  }
+
+  function extractMemberName(text){const match=text.match(/([가-힣]{2,4})님의\s*병력|([가-힣]{2,4})의\s*병력|회원명\s*[:：]?\s*([가-힣]{2,5})/);return match?.[1]||match?.[2]||match?.[3]||memberRecord.name||"회원"}
+  function extractLogs(text){
+    const codeMatches=[...text.matchAll(/\b([A-Z][0-9]{2,4})\b/g)];
+    const diagnoses=codeMatches.slice(0,400).map((match)=>({질병코드:match[1],질병명:"부위 통합 전 원문 기록",건수:1,보험내용:"PDF 기록",context:contextAround(text,match.index,70)}));
+    const visitDates=[...text.matchAll(/(20\d{2}[.\-/]\s*\d{1,2}[.\-/]\s*\d{1,2})/g)].slice(0,300);
+    const visits=visitDates.map((match,index)=>({진료시작일:match[1],병의원약국:"PDF 원문 참조",입원외래:contextAround(text,match.index,35).includes("입원")?"입원":"외래/기타",주상병코드:codeMatches[index]?.[1]||"",주상병명:"신체 부위명으로 통합",내원일수:null,의료비:null}));
+    const examNames=["조직병리검사","혈액검사","소변검사","초음파","CT","MRI","내시경","기능검사","영상검사"];
+    const exams=extractNamedContexts(text,examNames).map((item)=>({name:item.name,검사항목명:item.name,검사일:findDate(item.context),context:item.context}));
+    const medicineNames=["오메프라졸","란소프라졸","레바미피드","모사프리드","메트로니다졸","아목시실린","클라불란","세팔로스포린","이부프로펜","나프록센","아세클로페낙","항생제","소염진통제"];
+    const medications=extractNamedContexts(text,medicineNames).map((item)=>({name:item.name,약품명:item.name,효능:"관련 부위 관리 이력 참고",투약일:findDate(item.context),context:item.context}));
+    return{visits,diagnoses,exams,medications};
+  }
+  function extractNamedContexts(text,names){return names.flatMap((name)=>{const result=[];let index=text.indexOf(name);while(index>=0&&result.length<20){result.push({name,context:contextAround(text,index,80)});index=text.indexOf(name,index+name.length)}return result})}
+  function contextAround(text,index,radius){return normalizeText(text.slice(Math.max(0,index-radius),Math.min(text.length,index+radius)))}
+  function findDate(text){return text.match(/20\d{2}[.\-/]\s*\d{1,2}[.\-/]\s*\d{1,2}/)?.[0]||"일자 미표기"}
+  function countMatches(text,terms){return terms.reduce((sum,term)=>sum+Math.min(5,text.split(term).length-1),0)}
+  function collectAreaEvidence(text,area){return unique(area.pdfTerms.filter((term)=>text.includes(term)).map((term)=>/^[A-Z][0-9]/.test(term)?`질병코드 ${term} 계열`:`${safeText(term)} 관련 기록`)).slice(0,6)}
+  function generalExamMatches(area,name){return name==="조직병리검사"&&["skin","neck","breast"].includes(area.id)}
+  function isAreaApplicable(area){const gender=String(analysis.health?.profile?.gender||analysis.health?.basic?.gender||"");if(area.gender==="female"&&gender.includes("남"))return false;if(area.gender==="male"&&gender.includes("여"))return false;return true}
+  function getLifestyleMatches(area,text){
+    const terms={stomach:["불규칙","야식","과식","가공식품"],bowel:["식사","수분","운동 부족"],liver:["음주","술"],lung:["흡연","분진","화학물질"],circulation:["흡연","운동 부족","수면 부족"],brain:["수면","스트레스","야간"],kidney:["수분","소변"],pancreas:["과식","단 음식","야식"],inflammation:["운동 부족","반복 작업"]}[area.id]||[];
+    return terms.filter((term)=>text.includes(term));
+  }
+  function getTopIrisObservations(){return [...analysis.observations].filter((item)=>item.code).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,6)}
+  function riskLevel(score){if(score>=71)return{key:"very",label:"매우 높음"};if(score>=41)return{key:"high",label:"높음"};if(score>=21)return{key:"normal",label:"보통"};return{key:"low",label:"낮음"}}
+  function compactArea(area){return{id:area.id,name:area.name,score:area.score,level:area.level.label,change:area.change}}
+  function buildFinalText(top){const names=top.filter((item)=>item.score>0).slice(0,3).map((item)=>item.name);return names.length?`회원님의 과거 병력에서는 ${names.join(", ")} 영역이 우선적으로 확인됩니다. 문진과 생활습관을 먼저 살피고, 홍채 관찰 결과를 교차확인하여 부위별 관리 우선도에 반영했습니다.`:"업로드된 기록에서 우선 표시할 부위가 충분하지 않습니다. 정기 기록과 문진을 함께 확인해 주세요."}
+
+  function renderReport(report){
+    $("#report").hidden=false;
+    $("#memberMeta").innerHTML=`회원명 ${escapeHtml(report.회원명)} · 분석일 ${new Date(report.업로드일).toLocaleString("ko-KR")} · ${report.PDF페이지수}페이지`;
+    $("#memberInfo").innerHTML=summaryItems([["회원명",report.회원명],["회원번호",report.회원번호||"세션 정보 없음"],["구독 플랜",subscription.plan||"미표기"],["구독 회차",`${report.구독회차}회차`]]);
+    const historyAreas=report.부위별점수JSON.filter((item)=>item.medicalHistory).slice(0,8);
+    $("#historySummary").innerHTML=historyAreas.length?historyAreas.map((item)=>`<div class="summary-item"><strong>${escapeHtml(item.name)}</strong><span>관련 기록 ${item.pdfMatches}건 · 투약 ${item.medications.length}건 · 검사 ${item.exams.length}건</span></div>`).join(""):'<p class="empty">부위로 통합할 병력 텍스트가 확인되지 않았습니다.</p>';
+    $("#healthSummary").innerHTML=summaryItems([["현재 문진",analysis.findings.slice(0,6).map((item)=>item.label).join(", ")||"주의 응답 없음"],["생활습관",Object.entries(analysis.scores).sort((a,b)=>a[1]-b[1]).slice(0,4).map(([name,score])=>`${name} ${score}점`).join(", ")],["홍채 관찰",getTopIrisObservations().slice(0,4).map((item)=>`${item.eyeLabel} ${item.code} ${item.area||""}`).join(", ")||"자료 없음"]]);
+    renderBody(report.부위별점수JSON);
+    const top=report.부위별점수JSON.slice(0,5);
+    const average=top.length?Math.round(top.reduce((sum,item)=>sum+item.score,0)/top.length):0;
+    $("#overallSummary").innerHTML=`<p><strong>${riskLevel(average).label}</strong> · 상위 5개 부위 평균 ${average}%</p><p class="meta">${escapeHtml(report.최종리포트문구)}</p>`;
+    $("#topFive").innerHTML=top.map((item,index)=>`<div class="top-item"><strong>${index+1}. ${escapeHtml(item.name)} ${item.score}%</strong><span>${item.level.label} · ${item.change}</span></div>`).join("");
+    $("#priorities").innerHTML=top.slice(0,3).map((item,index)=>`<div class="priority-item"><strong>${index+1}순위 · ${escapeHtml(item.name)}</strong><p>${escapeHtml(item.direction)}</p></div>`).join("");
+    $("#linkedCare").innerHTML=`<p><strong>추천 건강박스</strong><br>${escapeHtml((report.건강박스JSON||[]).join(", ")||"구성 자료 없음")}</p><p><strong>쇼핑하기 추천 성분</strong><br>${escapeHtml((report.추천성분JSON||[]).join(", ")||"추천 자료 없음")}</p><p class="meta">건강박스 이력 ${(report.건강박스이력JSON||[]).length}회 · 구매이력 ${(report.구매이력JSON||[]).length}건 반영</p>`;
+    $("#evidenceGrid").innerHTML=top.map(renderEvidence).join("");
+    renderChange(report);
+    $("#report").scrollIntoView({behavior:"smooth",block:"start"});
+  }
+  function summaryItems(items){return items.map(([title,value])=>`<div class="summary-item"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(value)}</span></div>`).join("")}
+  function renderBody(scores){
+    const visible=scores.filter((item)=>item.score>0).slice(0,14);
+    $("#bodyLabels").innerHTML=visible.map((item)=>{
+      const pos=POSITION[item.id]||[50,50];
+      const questionnaireMatch=item.healthMatches.length?Math.min(95,55+Math.max(0,item.healthMatches.length-1)*12):0;
+      return`<span class="body-label ${item.level.key}" style="left:${pos[0]}%;top:${pos[1]}%"><strong>${escapeHtml(item.name)}</strong><small>문진 일치도 ${questionnaireMatch}%</small><small>관리 우선도 ${escapeHtml(item.level.label)}</small></span>`;
+    }).join("");
+    $("#riskBars").innerHTML=scores.slice(0,12).map((item)=>`<div class="risk-row"><span>${escapeHtml(item.name)}</span><div class="track"><div class="fill ${item.level.key}" style="width:${item.score}%"></div></div><span class="risk-value">${item.score}% ${item.level.label}</span></div>`).join("");
+  }
+  function renderEvidence(item){
+    const pdf=item.evidence.length?item.evidence.join(", "):"관련 PDF 기록 없음";
+    const iris=item.irisMatches.length?item.irisMatches.map((entry)=>`${entry.eyeLabel} ${entry.code}`).join(", "):"홍채 상위 관찰값 없음";
+    const health=item.healthMatches.length?item.healthMatches.map((entry)=>entry.label).join(", "):"관련 문진 응답 없음";
+    const scoring=[item.medicalHistory&&"병력 +20",item.repeated&&"반복 +15",item.medications.length&&"투약 +10",item.exams.length&&"검사 +15",item.irisMatches.length&&"홍채 +20",item.healthMatches.length&&"문진 +20",item.lifestyleMatches.length&&"생활습관 +15",item.familyMatches.length&&"가족력 +10",item.managed&&"관리 -10",item.change==="개선 흐름"&&"최근 개선 -10",item.change==="주의 증가"&&"최근 변화 +10"].filter(Boolean).join(" · ");
+    return`<article class="evidence"><h3>${escapeHtml(item.name)} ${item.score}%</h3><p><strong>PDF:</strong> ${escapeHtml(pdf)}</p><p><strong>홍채 기반 참고:</strong> ${escapeHtml(iris)}</p><p><strong>문진 기반 참고:</strong> ${escapeHtml(health)}</p><p><strong>계산 근거:</strong> ${escapeHtml(scoring||"기본 참고값")}</p></article>`;
+  }
+  function renderChange(report){
+    const previous=getHistory().at(-1);
+    if(!previous){$("#changeSummary").innerHTML='<p class="empty">이번 결과가 첫 기준점입니다. 다음 회차부터 부위별 변화를 비교합니다.</p>';return}
+    const previousMap=new Map(previous.부위별점수JSON.map((item)=>[item.id,item.score]));
+    const changes=report.부위별점수JSON.map((item)=>({name:item.name,delta:item.score-(previousMap.get(item.id)||0)})).sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta)).slice(0,6);
+    $("#changeSummary").innerHTML=changes.map((item)=>`<span class="body-label ${item.delta>5?'high':item.delta<-5?'normal':'low'}" style="position:static;display:inline-block;transform:none;margin:4px">${escapeHtml(item.name)} ${item.delta>0?'+':''}${item.delta}%</span>`).join("");
+  }
+  function setStatus(message){$("#analysisStatus").textContent=message}
+  function getHistory(){const value=readJson(reportKey);return Array.isArray(value)?value:[]}
+  function saveCurrentReport(){if(!currentReport)return;const history=getHistory();history.push(currentReport);localStorage.setItem(reportKey,JSON.stringify(history.slice(-12)));setStatus(`${currentReport.구독회차}회차 유니버스 리포트가 회원 기록에 저장되었습니다.`);renderStoredHistory()}
+  function renderStoredHistory(){
+    const rows=$("#historyRows");if(!rows)return;
+    const history=getHistory().slice().reverse();
+    rows.innerHTML=history.length?history.map((record,index)=>{const previous=history[index+1];const currentAverage=Math.round(record.TOP5부위JSON.reduce((sum,item)=>sum+item.score,0)/Math.max(1,record.TOP5부위JSON.length));const pastAverage=previous?Math.round(previous.TOP5부위JSON.reduce((sum,item)=>sum+item.score,0)/Math.max(1,previous.TOP5부위JSON.length)):null;const change=pastAverage===null?"기준점":`${currentAverage-pastAverage>0?'+':''}${currentAverage-pastAverage}%`;return`<tr><td>${record.구독회차}회차</td><td>${new Date(record.업로드일).toLocaleDateString("ko-KR")}</td><td>${escapeHtml(record.TOP5부위JSON.slice(0,3).map((item)=>item.name).join(", "))}</td><td>${change}</td></tr>`}).join(""):'<tr><td colspan="4" class="empty">저장된 유니버스 리포트가 없습니다.</td></tr>';
+  }
+  window.UniverseEngine={buildUniverseReport,extractLogs,riskLevel};
+})();

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>쇼핑하기 | IRIS MAPPING LAB</title>
+  <link rel="stylesheet" href="site-navigation.css">
+  <style>
+    :root { color-scheme:dark; --bg:#05090f; --panel:#0a1420; --line:#25495d; --text:#f5f7fa; --muted:#9db0bd; --cyan:#38d9d2; --gold:#e7b74e; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:linear-gradient(180deg,#07131c,#030609); color:var(--text); font-family:Arial,"Noto Sans KR",sans-serif; }
+    .page { width:min(1120px,100%); margin:auto; padding:24px; }
+    .hero { padding:22px 0; border-bottom:1px solid var(--line); }
+    .brand,.kicker { color:var(--cyan); font-size:12px; font-weight:800; letter-spacing:.08em; }
+    h1 { margin:7px 0 0; font-size:clamp(30px,5vw,44px); }
+    h2,h3,p { margin-top:0; }
+    p { line-height:1.55; }
+    .muted { color:var(--muted); }
+    .card { margin-top:15px; padding:21px; border:1px solid var(--line); border-radius:8px; background:rgba(9,20,32,.96); }
+    .chips { display:flex; flex-wrap:wrap; gap:8px; }
+    .chip { padding:9px 12px; border:1px solid #327084; border-radius:6px; background:#08131e; }
+    .ingredient-list { display:grid; gap:12px; }
+    .ingredient-row { display:grid; grid-template-columns:minmax(160px,230px) 1fr; gap:16px; align-items:center; padding:15px; border:1px solid #31566b; border-radius:8px; background:#08121d; }
+    .ingredient-row h3 { margin:0 0 6px; color:var(--gold); font-size:21px; }
+    .product-picks { display:flex; justify-content:flex-end; gap:10px; min-width:0; }
+    .product-pick { width:min(180px,48%); color:var(--text); text-decoration:none; }
+    .product-pick img { width:100%; aspect-ratio:4/3; display:block; object-fit:cover; border:1px solid #31566b; border-radius:7px; background:#020508; }
+    .product-pick span { display:block; margin-top:6px; font-size:13px; text-align:center; }
+    .product-pick .product-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:800; }
+    .product-pick .product-reason { color:var(--muted); font-size:12px; line-height:1.45; white-space:normal; }
+    .ingredient-reason { margin:7px 0 0; color:#d9e5e9; font-size:14px; }
+    .reason-label { color:var(--cyan); font-weight:850; }
+    .product-empty { color:var(--muted); text-align:right; }
+    .camera { display:grid; grid-template-columns:160px 1fr auto; gap:18px; align-items:center; }
+    .camera-visual { width:150px; height:112px; position:relative; border:1px solid #3b6c7e; border-radius:8px; background:linear-gradient(145deg,#132435,#060b12); }
+    .camera-visual::before { content:""; width:62px; height:62px; position:absolute; left:44px; top:25px; border:8px solid #1b4256; border-radius:50%; background:radial-gradient(circle,#030509 0 29%,#2cc7c6 31% 35%,#07121c 37% 59%,#d6aa4c 61% 64%,#06101a 66%); }
+    .price { color:var(--gold); font-size:25px; font-weight:850; white-space:nowrap; }
+    .consult-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:11px; }
+    label { display:grid; gap:6px; color:#c9d6dd; font-weight:700; }
+    input { width:100%; min-height:44px; padding:10px; border:1px solid #31566b; border-radius:6px; background:#07111b; color:var(--text); font:inherit; }
+    .button { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 15px; border:1px solid var(--cyan); border-radius:6px; background:var(--cyan); color:#061414; font-weight:850; text-decoration:none; cursor:pointer; }
+    .consult-actions { margin-top:12px; }
+    .status { margin:10px 0 0; color:var(--cyan); }
+    @media(max-width:700px) { .page{padding:13px}.ingredient-row,.camera{grid-template-columns:1fr}.product-picks{justify-content:flex-start}.product-empty{text-align:left}.consult-grid{grid-template-columns:1fr}.camera .price{white-space:normal} }
+  </style>
+</head>
+<body>
+<main class="page">
+  <header class="hero"><div class="brand">IRIS MAPPING LAB</div><h1>쇼핑하기</h1></header>
+
+  <section class="card">
+    <span class="kicker">CARE GOALS</span>
+    <h2>추천 관리 목적</h2>
+    <div id="careGoals" class="chips"></div>
+  </section>
+
+  <section class="card">
+    <span class="kicker">INGREDIENTS</span>
+    <h2>우선 비교 성분</h2>
+    <div id="ingredientRows" class="ingredient-list"></div>
+  </section>
+
+  <section class="card camera">
+    <div class="camera-visual" aria-label="홍채촬영도구"></div>
+    <div><span class="kicker">IRIS CAMERA</span><h2>홍채촬영도구</h2><p class="muted">홍채 사진 촬영용 도구입니다.</p></div>
+    <div class="price">120,000원</div>
+  </section>
+
+  <section class="card" id="consultation">
+    <span class="kicker">CONSULTATION</span>
+    <h2>상담요청</h2>
+    <form id="consultForm">
+      <div class="consult-grid">
+        <label>이름<input name="name" required autocomplete="name"></label>
+        <label>연락처<input name="phone" required autocomplete="tel" inputmode="tel"></label>
+        <label>상담 가능 시간<input name="availableTime" required placeholder="예: 평일 오후 2~5시"></label>
+      </div>
+      <div class="consult-actions"><button class="button" type="submit">상담 요청 올리기</button></div>
+    </form>
+    <p id="consultStatus" class="status" role="status"></p>
+  </section>
+</main>
+
+<script src="care-engine.js"></script>
+<script src="shopping-recommendation-db.js"></script>
+<script>
+  const analysis = window.IrisCareEngine?.analyze?.() || { primary: [] };
+  const productDb = window.ProductDB;
+  const products = productDb?.read?.() || [];
+  const primary = Array.isArray(analysis.primary) ? analysis.primary : [];
+  const goals = unique(primary.flatMap((item) => item.goals || [])).slice(0, 8);
+  const ingredients = unique(primary.flatMap((item) => item.ingredients || [])).slice(0, 8);
+
+  document.querySelector("#careGoals").innerHTML = goals.length
+    ? goals.map((goal) => '<span class="chip">✓ ' + escapeHtml(goal) + '</span>').join("")
+    : '<span class="muted">라이프진단과 총결과를 완료하면 관리 목적이 표시됩니다.</span>';
+
+  document.querySelector("#ingredientRows").innerHTML = ingredients.length
+    ? ingredients.map(renderIngredientRow).join("")
+    : '<p class="muted">우선 비교할 성분이 아직 없습니다.</p>';
+
+  function renderIngredientRow(ingredient) {
+    const matches = products
+      .filter((product) => product.visible !== false && Number(product.stock) > 0 && product.imageUrl)
+      .filter((product) => (product.recommendedIngredients || []).some((value) => textMatch(value, ingredient)))
+      .sort((a,b) => Number(a.priority || 100) - Number(b.priority || 100))
+      .slice(0, 2);
+    const picks = matches.length
+      ? matches.map((product) => {
+          const target = product.naverSearchUrl || product.purchaseUrl || product.officialUrl || productDb.makeNaverSearchUrl(product.name);
+          const reason = product.reason || ingredient + ' 성분을 비교하기 위해 운영자가 선별한 상품입니다.';
+          return '<a class="product-pick" href="' + escapeHtml(target) + '" target="_blank" rel="noopener"><img src="' + escapeHtml(product.imageUrl) + '" alt="' + escapeHtml(product.name) + '"><span class="product-name">' + escapeHtml(product.name) + '</span><span class="product-reason"><b>추천 이유</b> ' + escapeHtml(reason) + '</span></a>';
+        }).join("")
+      : '<span class="product-empty">등록된 선별 상품 없음</span>';
+    return '<article class="ingredient-row"><div><h3>' + escapeHtml(ingredient) + '</h3><p class="ingredient-reason"><span class="reason-label">추천 이유</span> ' + escapeHtml(getIngredientReason(ingredient)) + '</p><p class="muted">상품 사진을 누르면 연결된 네이버 페이지로 이동합니다.</p></div><div class="product-picks">' + picks + '</div></article>';
+  }
+
+  function getIngredientReason(ingredient) {
+    const source = primary.find((item) => (item.ingredients || []).some((value) => textMatch(value, ingredient)));
+    if (!source) return ingredient + ' 성분의 함량과 구성을 우선 비교해 보세요.';
+    const findings = (source.matchedFindings || []).map((item) => item.label || item.title || item.name).filter(Boolean).slice(0, 3);
+    if (findings.length) return findings.join(', ') + ' 항목이 확인되어 ' + ingredient + ' 성분을 우선 비교합니다.';
+    const sourceGoals = (source.goals || []).slice(0, 2);
+    if (sourceGoals.length) return sourceGoals.join(', ') + '을 위한 비교 성분입니다.';
+    return (source.title || '현재 관리 목적') + '과 관련해 우선 비교하는 성분입니다.';
+  }
+
+  document.querySelector("#consultForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const requests = readJson("irisShoppingConsultRequests", []);
+    requests.push({ id:"C" + Date.now(), category:"상담요청", ...data, status:"접수", createdAt:new Date().toISOString() });
+    localStorage.setItem("irisShoppingConsultRequests", JSON.stringify(requests));
+    event.currentTarget.reset();
+    document.querySelector("#consultStatus").textContent = "상담요청이 등록되었습니다.";
+  });
+
+  function readJson(key,fallback){ try{return JSON.parse(localStorage.getItem(key)||"null")??fallback}catch(_){return fallback} }
+  function textMatch(a,b){ const x=normalize(a),y=normalize(b); return x && y && (x.includes(y)||y.includes(x)); }
+  function normalize(value){ return String(value||"").toLowerCase().replace(/\s+/g,"").replace(/[·ㆍ/()\-]/g,""); }
+  function unique(values){ return [...new Set((values||[]).map((value)=>String(value||"").trim()).filter(Boolean))]; }
+  function escapeHtml(value){ return String(value??"").replace(/[&<>"']/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
+</script>
+<script src="site-navigation.js"></script>
+</body>
+</html>

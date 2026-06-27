@@ -1,0 +1,54 @@
+window.shoppingRecommendationDB = {
+  productGroupDB: [
+    { id:"women_probiotics", keywords:["질염","질 냄새","분비물","가려움","여성 밸런스","생식기 염증"], title:"여성 유산균", message:"질·장 유익균 밸런스 관리를 위한 여성 유산균 제품군을 비교합니다." },
+    { id:"vitamin_b", keywords:["피로","체력저하","쉽게 지침","피로해진다","간·담낭"], title:"비타민B군", message:"에너지 대사에 필요한 비타민B군의 함량과 구성을 비교합니다." },
+    { id:"magnesium", keywords:["피로","근육 경련","쥐가","수면","스트레스","두근거림"], title:"마그네슘", message:"근육·신경 기능과 수면 습관 관리를 위해 마그네슘 형태와 함량을 비교합니다." },
+    { id:"milk_thistle", keywords:["간수치","간질환","간·담낭","황달","음주","숙취"], title:"밀크씨슬", message:"간 건강 기능성 원료인 실리마린의 표시 함량과 섭취 주의사항을 비교합니다." },
+    { id:"coq10", keywords:["심장","순환","혈압","두근거림","심장·순환·흉부"], title:"코엔자임Q10", message:"항산화와 높은 혈압 감소에 도움을 줄 수 있는 기능성 표시 제품을 비교합니다." },
+    { id:"probiotics", keywords:["소화","변비","설사","장·비장·면역","복부","더부룩"], title:"프로바이오틱스", message:"장 건강 관리를 위해 균주 구성과 보장균수를 비교합니다." },
+    { id:"eye_health", keywords:["눈 피로","시력","안구건조","눈·귀 신경"], title:"눈 건강 제품군", message:"루테인·지아잔틴 등 눈 건강 기능성 원료의 함량을 비교합니다." },
+    { id:"joint_health", keywords:["관절","무릎","연골","관절 통증"], title:"관절·연골 제품군", message:"관절 및 연골 건강 기능성 원료와 일일 섭취량을 비교합니다." }
+  ],
+  searchKeywordDB: {
+    women_probiotics:["여성 질 유산균","여성 유산균 질 건강","리스펙타 유산균","락토바실러스 크리스파투스","질 유래 유산균"],
+    vitamin_b:["고함량 비타민B군","피로 비타민B 컴플렉스","비타민B군 건강기능식품"],
+    magnesium:["마그네슘 글리시네이트","마그네슘 함량 표시 건강기능식품","마그네슘 비타민B6"],
+    milk_thistle:["밀크씨슬 실리마린 함량","밀크씨슬 건강기능식품","실리마린 표시 제품"],
+    coq10:["코엔자임Q10 건강기능식품","코큐텐 함량 표시","코엔자임Q10 항산화"],
+    probiotics:["프로바이오틱스 보장균수","유산균 균주 표시","장 건강 유산균"],
+    eye_health:["루테인 지아잔틴 함량","눈 건강 건강기능식품","루테인 아스타잔틴"],
+    joint_health:["관절 연골 건강기능식품","MSM 함량 표시","보스웰리아 기능성 제품"]
+  },
+  selectionConditionDB: [
+    "제품군과 핵심 성분이 일치하는가", "건강기능식품 표시가 있는가", "핵심 성분 함량이 표시되어 있는가",
+    "후기 수가 충분한가", "평점이 낮지 않은가", "과장 표현이 심하지 않은가",
+    "가격이 비정상적으로 싸거나 비싸지 않은가", "동일 브랜드 중복을 줄였는가",
+    "광고 문구보다 성분표를 우선했는가", "임산부·약 복용자·질환자 주의문구가 있는가"
+  ],
+  recommendationProductDB: [
+    {category:"women_probiotics",name:"리스펙타·질 유래 균주 여성 유산균 비교 후보",ingredient:"여성 유산균 기능성 원료 또는 질 유래 유산균",reason:"기능성 원료명, 보장균수, 보관방법이 표시된 제품을 우선 비교합니다."},
+    {category:"women_probiotics",name:"락토바실러스 크리스파투스 함유 제품 비교 후보",ingredient:"L. crispatus 등 균주명 표시",reason:"균주명이 구체적으로 공개된 제품끼리 비교하기 좋습니다."},
+    {category:"women_probiotics",name:"질·장 복합 여성 유산균 비교 후보",ingredient:"프로바이오틱스와 여성 건강 원료",reason:"질·장 밸런스용 구성과 1일 섭취량을 확인할 수 있는 후보입니다."},
+    {category:"vitamin_b",name:"고함량 비타민B 컴플렉스 비교 후보",ingredient:"비타민 B1·B2·B6·B12 등",reason:"각 비타민의 1일 섭취량 대비 함량이 공개된 제품을 우선합니다."},
+    {category:"vitamin_b",name:"활성형 비타민B군 비교 후보",ingredient:"활성형 B6·엽산·B12 등",reason:"원료 형태와 함량을 확인할 수 있는 제품의 비교 후보입니다."},
+    {category:"vitamin_b",name:"비타민B군·비타민C 복합 비교 후보",ingredient:"비타민B군과 비타민C",reason:"성분 중복과 총 섭취량을 확인하기 쉬운 제품을 비교합니다."},
+    {category:"magnesium",name:"마그네슘 글리시네이트 비교 후보",ingredient:"마그네슘 글리시네이트",reason:"원료 형태와 실제 마그네슘 함량이 명시된 제품을 우선합니다."},
+    {category:"magnesium",name:"마그네슘·비타민B6 복합 비교 후보",ingredient:"마그네슘과 비타민B6",reason:"중복 섭취 여부와 일일 함량을 비교하기 좋은 후보입니다."},
+    {category:"magnesium",name:"구연산 마그네슘 비교 후보",ingredient:"마그네슘 시트레이트",reason:"제형과 섭취 편의성, 표시 함량을 비교합니다."},
+    {category:"milk_thistle",name:"실리마린 함량 표시 밀크씨슬 비교 후보",ingredient:"밀크씨슬 추출물·실리마린",reason:"건강기능식품 표시와 실리마린 일일 함량이 명확한 제품을 우선합니다."},
+    {category:"milk_thistle",name:"밀크씨슬·비타민B군 복합 비교 후보",ingredient:"실리마린과 비타민B군",reason:"다른 영양제와 성분이 중복되지 않는지 확인할 비교 후보입니다."},
+    {category:"milk_thistle",name:"단일 밀크씨슬 추출물 비교 후보",ingredient:"밀크씨슬 추출물",reason:"불필요한 복합 성분을 줄이고 핵심 원료를 비교하기 좋습니다."},
+    {category:"coq10",name:"코엔자임Q10 함량 표시 비교 후보",ingredient:"코엔자임Q10",reason:"기능성 표시, 일일 함량, 복용 중인 약과의 주의사항을 확인합니다."},
+    {category:"coq10",name:"코엔자임Q10·비타민E 복합 비교 후보",ingredient:"코엔자임Q10과 비타민E",reason:"항산화 성분 구성과 중복 섭취량을 비교합니다."},
+    {category:"coq10",name:"식물성 캡슐 코엔자임Q10 비교 후보",ingredient:"코엔자임Q10",reason:"제형과 원료, 함량이 명확한 제품을 비교합니다."},
+    {category:"probiotics",name:"균주·보장균수 표시 프로바이오틱스 비교 후보",ingredient:"프로바이오틱스",reason:"균주명과 유통기한까지의 보장균수가 공개된 제품을 우선합니다."},
+    {category:"probiotics",name:"프리바이오틱스 복합 유산균 비교 후보",ingredient:"프로바이오틱스·프리바이오틱스",reason:"부원료와 당류, 1일 섭취량을 함께 비교합니다."},
+    {category:"probiotics",name:"상온 보관 유산균 비교 후보",ingredient:"프로바이오틱스",reason:"보관 편의성과 보장균수 조건을 비교하기 좋습니다."},
+    {category:"eye_health",name:"루테인·지아잔틴 함량 표시 비교 후보",ingredient:"루테인·지아잔틴",reason:"두 성분의 일일 함량과 기능성 표시를 확인합니다."},
+    {category:"eye_health",name:"루테인·아스타잔틴 복합 비교 후보",ingredient:"루테인·아스타잔틴",reason:"눈 피로 관련 복합 구성과 함량을 비교합니다."},
+    {category:"eye_health",name:"오메가3 복합 눈 건강 비교 후보",ingredient:"루테인·오메가3",reason:"항응고제 복용 여부와 성분 중복을 먼저 확인합니다."},
+    {category:"joint_health",name:"MSM 함량 표시 관절 제품 비교 후보",ingredient:"MSM",reason:"기능성 표시와 일일 섭취량이 명확한 제품을 우선합니다."},
+    {category:"joint_health",name:"보스웰리아 기능성 원료 비교 후보",ingredient:"보스웰리아 추출물",reason:"인정 원료 여부와 지표 성분 함량을 비교합니다."},
+    {category:"joint_health",name:"글루코사민 관절 제품 비교 후보",ingredient:"글루코사민",reason:"알레르기와 복용약 주의사항을 확인할 비교 후보입니다."}
+  ]
+};

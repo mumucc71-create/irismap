@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>쇼핑하기 | IRIS MAPPING LAB</title>
+  <link rel="stylesheet" href="site-navigation.css">
+  <style>
+    :root { color-scheme: dark; --bg:#05090f; --panel:#0a1420; --line:#25495d; --text:#f5f7fa; --muted:#9db0bd; --cyan:#38d9d2; --gold:#e7b74e; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:linear-gradient(180deg,#07131c,#030609); color:var(--text); font-family:Arial,"Noto Sans KR",sans-serif; }
+    .page { width:min(1180px,100%); margin:auto; padding:24px; }
+    .hero { display:flex; justify-content:space-between; align-items:end; gap:18px; padding:22px 0; border-bottom:1px solid var(--line); }
+    .brand,.kicker { color:var(--cyan); font-size:12px; font-weight:800; letter-spacing:.08em; }
+    h1 { margin:7px 0 0; font-size:clamp(30px,5vw,46px); }
+    h2,h3,p { margin-top:0; }
+    p,li { line-height:1.6; }
+    .muted { color:var(--muted); }
+    .card { margin-top:15px; padding:22px; border:1px solid var(--line); border-radius:8px; background:rgba(9,20,32,.96); }
+    .reason-card { border-color:#397487; background:linear-gradient(135deg,#0b1f2c,#09131e); }
+    .reason-card h2 { margin:7px 0 10px; font-size:clamp(23px,3vw,31px); }
+    .section-head { display:flex; justify-content:space-between; align-items:end; gap:16px; margin-bottom:15px; }
+    .section-head h2 { margin:5px 0 0; }
+    .chips { display:flex; flex-wrap:wrap; gap:8px; }
+    .chip { padding:9px 12px; border:1px solid #327084; border-radius:6px; background:#08131e; color:#dce8ee; }
+    .ingredient-grid,.product-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:13px; }
+    .ingredient { padding:17px; border:1px solid #31566b; border-radius:7px; background:#08121d; }
+    .ingredient h3 { color:var(--gold); }
+    .ingredient ul { margin:8px 0 0; padding-left:19px; color:#cad6dd; }
+    .search-list { display:flex; flex-wrap:wrap; gap:8px; }
+    .search-link { display:inline-flex; align-items:center; min-height:40px; padding:0 12px; border:1px solid #356d80; border-radius:6px; color:var(--cyan); text-decoration:none; background:#08131e; }
+    .product-card { min-width:0; overflow:hidden; border:1px solid #31566b; border-radius:8px; background:#08121d; }
+    .product-image { width:100%; aspect-ratio:4/3; display:block; object-fit:cover; background:#020508; }
+    .product-body { padding:16px; }
+    .product-brand { margin-bottom:5px; color:var(--cyan); font-size:13px; font-weight:800; }
+    .product-title { margin:0 0 9px; font-size:19px; }
+    .price { margin:13px 0; color:var(--gold); font-size:21px; font-weight:800; }
+    .actions { display:flex; flex-wrap:wrap; gap:7px; }
+    .button,summary.button { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:0 12px; border:1px solid var(--line); border-radius:6px; background:#0b1724; color:var(--text); font-weight:750; text-decoration:none; cursor:pointer; list-style:none; }
+    .button.primary { border-color:var(--cyan); background:var(--cyan); color:#061414; }
+    details.product-detail { margin-top:10px; }
+    details.product-detail summary::-webkit-details-marker { display:none; }
+    details.product-detail p { margin:10px 0 0; color:#c8d4dc; }
+    .empty { grid-column:1/-1; padding:30px 14px; border:1px dashed #31566b; border-radius:7px; text-align:center; color:var(--muted); }
+    .notice { border-left:3px solid var(--gold); }
+    .admin-link { color:var(--muted); font-size:13px; }
+    @media (max-width:850px) { .ingredient-grid,.product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:620px) { .page { padding:13px; } .hero,.section-head { align-items:stretch; flex-direction:column; } .ingredient-grid,.product-grid { grid-template-columns:1fr; } .actions,.actions>* { width:100%; } }
+  </style>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <div><div class="brand">IRIS MAPPING LAB</div><h1>쇼핑하기</h1></div>
+    <a class="button" href="index.html">홈으로</a>
+  </header>
+
+  <section class="card reason-card">
+    <span class="kicker">WHY RECOMMENDED</span>
+    <h2>왜 추천되었나요?</h2>
+    <div id="recommendationReason"></div>
+  </section>
+
+  <section class="card">
+    <div class="section-head"><div><span class="kicker">CARE GOALS</span><h2>추천 관리 목적</h2></div></div>
+    <div id="careGoals" class="chips"></div>
+  </section>
+
+  <section class="card">
+    <div class="section-head"><div><span class="kicker">INGREDIENTS</span><h2>우선 비교 성분</h2></div><span class="muted">제품보다 성분을 먼저 비교하세요.</span></div>
+    <div id="ingredientReasons" class="ingredient-grid"></div>
+  </section>
+
+  <section class="card">
+    <div class="section-head"><div><span class="kicker">SEARCH TERMS</span><h2>추천 검색어</h2></div><span class="muted">네이버는 상품 수집 없이 검색 링크만 엽니다.</span></div>
+    <div id="searchTerms" class="search-list"></div>
+  </section>
+
+  <section class="card">
+    <div class="section-head"><div><span class="kicker">CURATED PRODUCTS</span><h2>운영자 선별 상품</h2></div><span class="muted">추천 키워드와 일치하며 사진이 등록된 상품만 표시합니다.</span></div>
+    <div id="productCards" class="product-grid"></div>
+  </section>
+
+  <section class="card notice">
+    본 추천은 건강관리 제품 선택을 돕기 위한 참고 정보입니다. 질환이 있거나 약을 복용 중인 경우 전문가와 상담 후 선택하세요.
+  </section>
+  <p><a class="admin-link" href="product-admin.html">관리자 상품DB</a></p>
+</main>
+
+<script src="care-engine.js"></script>
+<script src="shopping-recommendation-db.js"></script>
+<script>
+  const analysis = window.IrisCareEngine?.analyze?.() || { primary: [], findings: [] };
+  const recommendationDB = window.shoppingRecommendationDB || {};
+  const products = window.ProductDB?.read?.() || [];
+
+  const ingredientHelp = {
+    "마그네슘":["긴장과 근육 이완 관리","수면 습관 관리","섭취량과 제형 비교"],
+    "비타민B군":["에너지 생성","피로 관리","활성형 여부 비교"],
+    "밀크씨슬":["간 건강 관리","실리마린 함량 비교","복용 중인 약과의 주의 확인"],
+    "코엔자임Q10":["에너지 생성","순환 건강 관리","원료와 함량 비교"],
+    "오메가3":["혈행 건강","중성지질 관리","EPA·DHA 함량 비교"],
+    "프로바이오틱스":["장내 균형","배변 리듬","균주와 보장균수 비교"],
+    "여성유산균":["여성 밸런스 관리","균주 구성 비교","보관 방식 확인"],
+    "비타민D":["면역 기능","뼈 건강","일일 섭취량 확인"],
+    "아연":["면역 기능","정상적인 세포분열","장기 고용량 섭취 주의"],
+    "L-테아닌":["긴장 완화 관리","휴식 습관 관리","카페인 섭취와 함께 비교"]
+  };
+
+  const primary = Array.isArray(analysis.primary) ? analysis.primary : [];
+  const findings = Array.isArray(analysis.findings) ? analysis.findings : [];
+  const desiredIngredients = unique(primary.flatMap((item) => item.ingredients || []));
+  const goals = unique(primary.flatMap((item) => item.goals || [])).slice(0, 8);
+  const findingLabels = unique(findings.map((item) => item.label || item.title || item.name).filter(Boolean));
+  const irisLabels = unique(primary.flatMap((item) => (item.matchedIris || []).map((iris) => iris.area || iris.title || iris.code)).filter(Boolean));
+  const universeLabels = readUniverseLabels();
+  const sourceKeywords = unique([
+    ...findingLabels, ...irisLabels, ...universeLabels, ...goals, ...desiredIngredients,
+    ...primary.flatMap((item) => [item.title, item.type, item.id]).filter(Boolean)
+  ]);
+
+  renderReason();
+  renderGoals();
+  renderIngredients();
+  const matchedProducts = matchProducts();
+  renderSearchTerms(matchedProducts);
+  renderProducts(matchedProducts);
+
+  function renderReason() {
+    const focus = unique(primary.map((item) => item.title).filter(Boolean)).slice(0, 3);
+    const symptoms = findingLabels.slice(0, 4);
+    const pieces = [];
+    if (symptoms.length) pieces.push("문진과 생활습관에서 " + symptoms.join(", ") + " 항목이 확인되었습니다.");
+    if (focus.length) pieces.push("종합 결과를 기준으로 " + focus.join(", ") + " 관리를 우선 비교합니다.");
+    if (universeLabels.length) pieces.push("유니버스 병력 자료의 " + universeLabels.slice(0, 3).join(", ") + " 항목도 함께 반영했습니다.");
+    document.querySelector("#recommendationReason").innerHTML = (pieces.length ? pieces : ["저장된 문진·종합 결과가 부족하여 기본 비교 성분을 안내합니다."])
+      .map((text) => "<p>" + escapeHtml(text) + "</p>").join("");
+  }
+
+  function renderGoals() {
+    document.querySelector("#careGoals").innerHTML = goals.length
+      ? goals.map((goal) => '<span class="chip">✓ ' + escapeHtml(goal) + "</span>").join("")
+      : '<span class="muted">총결과 또는 라이프진단을 먼저 완료하면 관리 목적이 표시됩니다.</span>';
+  }
+
+  function renderIngredients() {
+    document.querySelector("#ingredientReasons").innerHTML = desiredIngredients.length
+      ? desiredIngredients.slice(0, 6).map((ingredient) => {
+          const help = ingredientHelp[ingredient] || ["핵심 성분 함량 확인","제품 표시사항 비교","복용 중인 약과의 주의 확인"];
+          return '<article class="ingredient"><h3>' + escapeHtml(ingredient) + '</h3><ul>' + help.map((item) => "<li>" + escapeHtml(item) + "</li>").join("") + "</ul></article>";
+        }).join("")
+      : '<div class="empty">추천 성분을 만들 수 있는 저장 결과가 없습니다.</div>';
+  }
+
+  function matchProducts() {
+    return products
+      .filter((product) => product.visible !== false && Number(product.stock) > 0 && String(product.imageUrl || "").trim())
+      .map((product) => ({ product, score: productScore(product) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || Number(a.product.priority || 100) - Number(b.product.priority || 100))
+      .slice(0, 5)
+      .map((entry) => entry.product);
+  }
+
+  function productScore(product) {
+    let score = 0;
+    (product.recommendedIngredients || []).forEach((value) => {
+      if (desiredIngredients.some((wanted) => matches(value, wanted))) score += 8;
+    });
+    (product.targetKeywords || []).forEach((value) => {
+      if (sourceKeywords.some((source) => matches(value, source))) score += 5;
+    });
+    (product.searchKeywords || []).forEach((value) => {
+      if (sourceKeywords.some((source) => matches(value, source))) score += 2;
+    });
+    if (primary.some((item) => matches(product.category, item.id) || matches(product.category, item.title))) score += 6;
+    return score;
+  }
+
+  function renderSearchTerms(matched) {
+    const terms = unique([
+      ...matched.flatMap((product) => product.searchKeywords || []),
+      ...desiredIngredients.flatMap((ingredient) => ingredientSearchTerms(ingredient))
+    ]).slice(0, 10);
+    document.querySelector("#searchTerms").innerHTML = terms.length
+      ? terms.map((term) => '<a class="search-link" target="_blank" rel="noopener" href="' + escapeAttr(ProductDB.makeNaverSearchUrl(term)) + '">' + escapeHtml(term) + "</a>").join("")
+      : '<span class="muted">추천 상품 또는 성분이 등록되면 검색어가 표시됩니다.</span>';
+  }
+
+  function renderProducts(matched) {
+    document.querySelector("#productCards").innerHTML = matched.length
+      ? matched.map((product) => {
+          const ingredients = (product.recommendedIngredients || []).join(", ");
+          const price = Number(product.salePrice || 0).toLocaleString("ko-KR") + "원";
+          const naverUrl = product.naverSearchUrl || ProductDB.makeNaverSearchUrl((product.searchKeywords || [])[0] || product.name);
+          const detailText = product.description || product.reason || "운영자가 선별한 비교 상품입니다.";
+          return '<article class="product-card">' +
+            '<img class="product-image" loading="lazy" src="' + escapeAttr(product.imageUrl) + '" alt="' + escapeAttr(product.name) + '">' +
+            '<div class="product-body"><div class="product-brand">' + escapeHtml(product.brand) + '</div><h3 class="product-title">' + escapeHtml(product.name) + '</h3>' +
+            '<p><strong>핵심 성분</strong><br>' + escapeHtml(ingredients || "등록 정보 확인") + '</p><p>' + escapeHtml(product.reason || "추천 기준과 성분을 비교하기 좋은 선별 상품입니다.") + '</p>' +
+            '<div class="price">' + escapeHtml(price) + '</div><div class="actions">' +
+            (product.purchaseUrl ? '<a class="button primary" target="_blank" rel="noopener" href="' + escapeAttr(product.purchaseUrl) + '">구매하기</a>' : "") +
+            (product.officialUrl ? '<a class="button" target="_blank" rel="noopener" href="' + escapeAttr(product.officialUrl) + '">공식몰</a>' : "") +
+            '<a class="button" target="_blank" rel="noopener" href="' + escapeAttr(naverUrl) + '">네이버 검색</a></div>' +
+            '<details class="product-detail"><summary class="button">자세히 보기</summary><p>' + escapeHtml(detailText) + '</p></details></div></article>';
+        }).join("")
+      : '<div class="empty">현재 추천 조건과 일치하는 선별 상품이 없습니다.<br>관리자 상품DB에서 사진과 추천 대상 키워드를 등록해 주세요.</div>';
+  }
+
+  function ingredientSearchTerms(ingredient) {
+    const map = recommendationDB.searchKeywordDB || {};
+    const group = (recommendationDB.productGroupDB || []).find((item) => (item.ingredients || []).some((value) => matches(value, ingredient)));
+    return group ? (map[group.id] || []).slice(0, 2) : [ingredient];
+  }
+
+  function readUniverseLabels() {
+    const labels = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index) || "";
+      if (!key.startsWith("UniverseReportDB")) continue;
+      try {
+        const value = JSON.parse(localStorage.getItem(key) || "null");
+        const reports = Array.isArray(value) ? value : [value];
+        reports.filter(Boolean).slice(-1).forEach((report) => {
+          const top = report.TOP5부위JSON || report.top5 || report.topAreas || [];
+          (Array.isArray(top) ? top : Object.keys(top || {})).forEach((item) => labels.push(typeof item === "string" ? item : item.area || item.name));
+        });
+      } catch (_) { /* 저장 형식이 다른 과거 자료는 건너뜁니다. */ }
+    }
+    return unique(labels.filter(Boolean));
+  }
+
+  function matches(left, right) {
+    const a = normalize(left); const b = normalize(right);
+    if (!a || !b) return false;
+    if (a.length < 2 || b.length < 2) return a === b;
+    return a.includes(b) || b.includes(a);
+  }
+  function normalize(value) { return String(value || "").toLowerCase().replace(/\s+/g, "").replace(/[·ㆍ/()\-]/g, ""); }
+  function unique(values) { return [...new Set((values || []).map((value) => String(value || "").trim()).filter(Boolean))]; }
+  function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
+  function escapeAttr(value) { return escapeHtml(value); }
+</script>
+<script src="site-navigation.js"></script>
+</body>
+</html>

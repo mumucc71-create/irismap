@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>운영자 상품관리 | IRIS MAPPING LAB</title>
+  <style>
+    :root{color-scheme:dark;--bg:#05090f;--panel:#0a1420;--line:#25495d;--text:#f5f7fa;--muted:#9db0bd;--cyan:#38d9d2;--gold:#e7b74e}
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#07131c,#030609);color:var(--text);font-family:Arial,"Noto Sans KR",sans-serif}
+    .page{width:min(1080px,100%);margin:auto;padding:24px}
+    .kicker{color:var(--cyan);font-size:12px;font-weight:900;letter-spacing:.08em}
+    h1{margin:8px 0 18px;font-size:clamp(30px,5vw,44px)}
+    h2,h3,p{margin-top:0}
+    p{line-height:1.55}
+    .card{margin-top:14px;padding:20px;border:1px solid var(--line);border-radius:8px;background:rgba(9,20,32,.95)}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    label{display:grid;gap:6px;color:#d5e0e6;font-weight:800}
+    input,select,textarea{width:100%;min-height:44px;padding:10px;border:1px solid #31566b;border-radius:6px;background:#07111b;color:var(--text);font:inherit}
+    textarea{min-height:92px;resize:vertical}
+    .wide{grid-column:1/-1}
+    .button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 15px;border:1px solid var(--cyan);border-radius:6px;background:var(--cyan);color:#061414;font-weight:900;text-decoration:none;cursor:pointer}
+    .ghost{background:#07111b;color:var(--text);border-color:#31566b}
+    .danger{background:#12090b;color:#ffd8d8;border-color:#6a3440}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+    .hidden{display:none!important}
+    .product-list{display:grid;gap:10px}
+    .product-row{display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid #31566b;border-radius:8px;background:#08121d}
+    .product-row img{width:80px;aspect-ratio:1;object-fit:cover;border:1px solid #31566b;border-radius:7px;background:#020508}
+    .price{color:var(--gold);font-weight:900}
+    .muted{color:var(--muted)}
+    @media(max-width:760px){.page{padding:13px}.grid,.product-row{grid-template-columns:1fr}.product-row img{width:100%;max-width:160px}}
+  </style>
+</head>
+<body>
+<main class="page">
+  <section id="gate" class="card">
+    <span class="kicker">ADMIN ONLY</span>
+    <h1>운영자 상품관리</h1>
+    <p class="muted">이 페이지는 메뉴에 노출되지 않습니다. 처음 접속 시 운영자 비밀번호를 설정하고 이후 같은 비밀번호로 들어갑니다.</p>
+    <form id="gateForm">
+      <label>운영자 비밀번호<input id="adminPassword" type="password" autocomplete="current-password" required></label>
+      <div class="actions"><button class="button" type="submit">관리자 입장</button></div>
+    </form>
+    <p id="gateStatus" class="muted"></p>
+  </section>
+
+  <section id="adminPanel" class="hidden">
+    <span class="kicker">PRODUCT ADMIN</span>
+    <h1>상품 추가</h1>
+    <section class="card">
+      <form id="productForm">
+        <input type="hidden" name="productId">
+        <div class="grid">
+          <label>상품명<input name="name" required></label>
+          <label>브랜드<input name="brand"></label>
+          <label>분류
+            <select name="displayGroup">
+              <option value="basic">기본 필수</option>
+              <option value="personal" selected>개인별 필수</option>
+              <option value="preference">기호식품</option>
+            </select>
+          </label>
+          <label>카테고리<input name="category" placeholder="예: 마그네슘"></label>
+          <label>가격<input name="salePrice" type="number" min="0" step="100" required></label>
+          <label>재고<input name="stock" type="number" min="0" value="1"></label>
+          <label>노출 여부
+            <select name="visible">
+              <option value="true" selected>노출</option>
+              <option value="false">숨김</option>
+            </select>
+          </label>
+          <label>우선순위<input name="priority" type="number" min="0" value="100"></label>
+          <label class="wide">상품 사진 업로드<input id="imageFile" type="file" accept="image/*"></label>
+          <label class="wide">상품 사진 URL<input name="imageUrl" placeholder="업로드하면 자동 입력됩니다."></label>
+          <label class="wide">추천 성분<input name="recommendedIngredients" placeholder="마그네슘, 비타민B"></label>
+          <label class="wide">추천 대상 키워드<input name="targetKeywords" placeholder="피로, 수면, 긴장"></label>
+          <label class="wide">상품 설명<textarea name="description" required></textarea></label>
+          <label class="wide">왜 이 상품이 필요한가<textarea name="reason" required></textarea></label>
+        </div>
+        <div class="actions">
+          <button class="button" type="submit">상품 저장</button>
+          <button id="resetForm" class="button ghost" type="button">새 상품 입력</button>
+          <a class="button ghost" href="shopping.html">쇼핑 화면 보기</a>
+        </div>
+      </form>
+    </section>
+    <section class="card">
+      <h2>등록 상품</h2>
+      <div id="productList" class="product-list"></div>
+    </section>
+  </section>
+</main>
+<script src="shopping-recommendation-db.js"></script>
+<script>
+  const ADMIN_KEY="irisShoppingAdminPassword";
+  const UNLOCK_KEY="irisShoppingAdminUnlocked";
+  const form=document.querySelector("#productForm");
+  const imageInput=document.querySelector("#imageFile");
+  initGate();
+
+  document.querySelector("#gateForm").addEventListener("submit",(event)=>{
+    event.preventDefault();
+    const password=document.querySelector("#adminPassword").value.trim();
+    const saved=localStorage.getItem(ADMIN_KEY);
+    if(!saved){
+      localStorage.setItem(ADMIN_KEY,password);
+      localStorage.setItem(UNLOCK_KEY,"1");
+      showAdmin();
+      return;
+    }
+    if(password===saved){
+      localStorage.setItem(UNLOCK_KEY,"1");
+      showAdmin();
+    }else{
+      document.querySelector("#gateStatus").textContent="비밀번호가 맞지 않습니다.";
+    }
+  });
+
+  imageInput.addEventListener("change",()=>{
+    const file=imageInput.files?.[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=()=>{form.elements.imageUrl.value=reader.result;};
+    reader.readAsDataURL(file);
+  });
+
+  form.addEventListener("submit",(event)=>{
+    event.preventDefault();
+    const data=Object.fromEntries(new FormData(form).entries());
+    const products=ProductDB.read();
+    const normalized=ProductDB.normalize({
+      ...data,
+      visible:data.visible==="true",
+      productId:data.productId||undefined
+    });
+    const index=products.findIndex((item)=>item.productId===normalized.productId);
+    if(index>=0)products[index]=normalized; else products.push(normalized);
+    ProductDB.write(products);
+    form.reset();
+    form.elements.displayGroup.value="personal";
+    form.elements.visible.value="true";
+    form.elements.stock.value="1";
+    form.elements.priority.value="100";
+    renderProducts();
+  });
+
+  document.querySelector("#resetForm").addEventListener("click",()=>{
+    form.reset();
+    form.elements.productId.value="";
+    form.elements.displayGroup.value="personal";
+    form.elements.visible.value="true";
+    form.elements.stock.value="1";
+    form.elements.priority.value="100";
+  });
+
+  document.addEventListener("click",(event)=>{
+    const edit=event.target.closest("[data-edit]");
+    if(edit){loadProduct(edit.dataset.edit);return;}
+    const remove=event.target.closest("[data-remove]");
+    if(remove){
+      const next=ProductDB.read().filter((item)=>item.productId!==remove.dataset.remove);
+      ProductDB.write(next);
+      renderProducts();
+    }
+  });
+
+  function initGate(){
+    if(localStorage.getItem(UNLOCK_KEY)==="1")showAdmin();
+  }
+  function showAdmin(){
+    document.querySelector("#gate").classList.add("hidden");
+    document.querySelector("#adminPanel").classList.remove("hidden");
+    renderProducts();
+  }
+  function loadProduct(id){
+    const product=ProductDB.read().find((item)=>item.productId===id);
+    if(!product)return;
+    Object.entries(product).forEach(([key,value])=>{
+      if(!form.elements[key])return;
+      form.elements[key].value=Array.isArray(value)?value.join(", "):String(value ?? "");
+    });
+    form.elements.visible.value=product.visible===false?"false":"true";
+    scrollTo({top:0,behavior:"smooth"});
+  }
+  function renderProducts(){
+    const products=ProductDB.read();
+    const list=document.querySelector("#productList");
+    if(!products.length){list.innerHTML='<p class="muted">등록된 상품이 없습니다.</p>';return;}
+    list.innerHTML=products.map((item)=>`
+      <article class="product-row">
+        <img src="${escapeHtml(item.imageUrl||"")}" alt="${escapeHtml(item.name)}">
+        <div><strong>${escapeHtml(item.name)}</strong><p class="muted">${escapeHtml(item.description||item.reason||"")}</p><span class="price">${Number(item.salePrice||0).toLocaleString("ko-KR")}원</span></div>
+        <div class="actions"><button class="button ghost" type="button" data-edit="${escapeHtml(item.productId)}">수정</button><button class="button danger" type="button" data-remove="${escapeHtml(item.productId)}">삭제</button></div>
+      </article>`).join("");
+  }
+  function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]))}
+</script>
+</body>
+</html>

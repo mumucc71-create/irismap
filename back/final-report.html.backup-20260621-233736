@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>최종 종합 판독 | IRIS MAPPING LAB</title>
+  <style>
+    :root { color-scheme: dark; --bg:#05090f; --panel:#0b1320; --line:#234458; --text:#f4f7fa; --muted:#9eb0bd; --cyan:#36d8d0; --gold:#e8b74c; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; color:var(--text); background:linear-gradient(180deg,#06111a 0,#03060a 100%); font-family:Arial,"Noto Sans KR",sans-serif; }
+    .page { width:min(1180px,100%); margin:auto; padding:22px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:18px 0 22px; border-bottom:1px solid var(--line); }
+    .brand { color:var(--cyan); font-size:13px; font-weight:800; letter-spacing:.08em; }
+    h1 { margin:7px 0 0; font-size:clamp(27px,4vw,42px); letter-spacing:0; }
+    h2 { margin:0 0 16px; font-size:21px; }
+    h3 { margin:0 0 8px; font-size:17px; color:var(--gold); }
+    p { line-height:1.65; }
+    .actions { display:flex; gap:9px; flex-wrap:wrap; }
+    .button { min-height:42px; display:inline-flex; align-items:center; justify-content:center; padding:0 16px; border:1px solid var(--line); border-radius:7px; color:var(--text); background:#0b1522; font-weight:700; text-decoration:none; cursor:pointer; }
+    .button.primary { color:#031312; background:var(--cyan); border-color:var(--cyan); }
+    .status-grid,.source-grid,.detail-grid { display:grid; gap:12px; }
+    .status-grid { grid-template-columns:repeat(4,minmax(0,1fr)); margin:20px 0; }
+    .source-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:12px; }
+    .detail-grid .wide { grid-column:1 / -1; }
+    .card { min-width:0; padding:20px; border:1px solid var(--line); border-radius:8px; background:rgba(10,19,31,.92); }
+    .status { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+    .status b { color:var(--gold); }
+    .status .ready { color:var(--cyan); }
+    .summary { margin:0 0 14px; padding:24px; border-color:#3b6e82; }
+    .rank { padding:12px 0; border-top:1px solid rgba(80,119,139,.45); }
+    .rank:first-of-type { border-top:0; padding-top:0; }
+    .rank strong { display:block; margin-bottom:4px; }
+    .meta,.empty,.notice { color:var(--muted); }
+    ul { margin:8px 0 0; padding-left:20px; line-height:1.65; }
+    .notice { margin-top:16px; padding:16px 18px; border-left:3px solid var(--gold); background:#0a1018; font-size:14px; }
+    .missing-link { color:var(--cyan); }
+    .response-list li { margin-bottom:7px; }
+    .life-diagnosis-card { margin-top:12px; padding:28px; background:linear-gradient(145deg,rgba(5,14,23,.98),rgba(2,8,14,.98)); }
+    .life-summary-heading { margin-bottom:22px; }
+    .life-summary-heading h2 { margin-bottom:7px; font-size:clamp(24px,3vw,32px); }
+    .life-summary-heading p { margin:0; color:var(--muted); }
+    .life-category-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .life-category-card { min-width:0; min-height:205px; padding:17px; border:1px solid color-mix(in srgb,var(--category) 36%,#244558); border-radius:8px; background:linear-gradient(145deg,color-mix(in srgb,var(--category) 9%,#07111c),#07101a 72%); }
+    .life-category-head { display:flex; align-items:center; gap:10px; padding-bottom:12px; border-bottom:1px solid color-mix(in srgb,var(--category) 28%,transparent); }
+    .life-category-mark { width:28px; height:28px; display:grid; place-items:center; flex:0 0 auto; border-radius:50%; color:#031014; background:var(--category); font-size:12px; font-weight:900; }
+    .life-category-head h3 { flex:1; margin:0; color:var(--category); font-size:18px; }
+    .life-count { padding:4px 9px; border:1px solid color-mix(in srgb,var(--category) 26%,transparent); border-radius:14px; color:#dce6ed; background:rgba(255,255,255,.04); font-size:13px; }
+    .life-category-list { list-style:none; margin:13px 0 0; padding:0; }
+    .life-category-list li { position:relative; margin:8px 0; padding-left:20px; color:#d3dde5; line-height:1.45; }
+    .life-category-list li::before { content:"✓"; position:absolute; left:0; color:var(--category); font-weight:900; }
+    .life-more { margin-top:9px; color:var(--muted); font-size:13px; }
+    .life-top-section { margin-top:16px; padding:18px; border:1px solid #31556a; border-radius:8px; background:#07111b; }
+    .life-top-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:13px; }
+    .life-top-heading h3 { margin:0; color:#f4ca68; font-size:18px; }
+    .life-top-heading span { color:var(--muted); font-size:12px; }
+    .life-top-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
+    .life-top-item { padding:13px; border:1px solid color-mix(in srgb,var(--category) 40%,#244458); border-radius:7px; background:color-mix(in srgb,var(--category) 8%,#09121c); }
+    .life-top-item b { display:inline-block; margin-bottom:9px; padding:3px 7px; border-radius:4px; color:var(--category); background:color-mix(in srgb,var(--category) 14%,transparent); }
+    .life-top-item strong,.life-top-item span { display:block; }
+    .life-top-item strong { margin-bottom:5px; color:#f2f5f7; }
+    .life-top-item span { color:var(--muted); font-size:13px; }
+    .life-interpretation { display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; margin-top:16px; padding:18px 20px; border:1px solid #31556a; border-radius:8px; background:#07111b; }
+    .life-interpretation h3 { margin-bottom:6px; }
+    .life-interpretation p { margin:0; color:#c7d2db; }
+    .life-total { min-width:190px; padding:13px 18px; border:1px solid #8a6828; border-radius:7px; color:#f4ca68; text-align:center; }
+    .life-total strong { display:block; margin-top:4px; font-size:26px; }
+    .score-row { display:grid; grid-template-columns:90px 1fr 48px; gap:9px; align-items:center; margin:9px 0; }
+    .score-track { height:8px; background:#172432; border-radius:4px; overflow:hidden; }
+    .score-fill { height:100%; background:var(--cyan); }
+    .match-box { padding:14px 0; border-top:1px solid rgba(80,119,139,.45); }
+    .match-box:first-child { border-top:0; padding-top:0; }
+    .integrated-summary { margin-bottom:14px; border-color:#3b7b86; }
+    .confidence-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:0 0 16px; }
+    .member-first-intro { padding:14px 16px; margin:0 0 16px; border-left:3px solid var(--gold); background:#111018; line-height:1.75; }
+    .iris-bubble { display:grid; gap:5px; width:min(250px,100%); margin:10px 0 14px; padding:12px 14px; border:1px solid var(--cyan); border-radius:8px; background:#07131d; }
+    .iris-bubble strong { color:var(--gold); font-size:17px; }
+    .confidence-item { padding:13px; border:1px solid #31556a; border-radius:7px; background:#07131e; }
+    .confidence-item strong { display:block; margin-top:5px; color:var(--cyan); font-size:20px; }
+    .integrated-rank { padding:17px 0; border-top:1px solid rgba(80,119,139,.45); }
+    .integrated-rank:first-of-type { border-top:0; }
+    .integrated-rank dl { display:grid; grid-template-columns:105px 1fr; gap:7px 12px; margin:10px 0 0; }
+    .integrated-rank dt { color:var(--muted); font-weight:700; }
+    .integrated-rank dd { margin:0; line-height:1.55; }
+    .low-confidence { padding:13px 15px; border:1px solid #8a6a28; border-radius:7px; background:#15120b; color:#ffe3a0; }
+    .report-tabs { position:sticky; top:0; z-index:5; display:flex; gap:8px; margin:18px 0 14px; padding:8px; border:1px solid var(--line); border-radius:8px; background:rgba(5,12,20,.96); backdrop-filter:blur(10px); }
+    .report-tab { flex:1; min-height:44px; border:1px solid transparent; border-radius:6px; color:var(--muted); background:transparent; font-weight:800; cursor:pointer; }
+    .report-tab.is-active { color:#071014; border-color:var(--gold); background:var(--gold); }
+    .report-view[hidden] { display:none; }
+    .quick-confidence { display:flex; gap:10px; flex-wrap:wrap; margin:0 0 14px; }
+    .quick-confidence span { padding:8px 12px; border:1px solid #31556a; border-radius:6px; color:var(--muted); background:#07131e; }
+    .quick-confidence strong { margin-left:6px; color:var(--cyan); }
+    .quick-result-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .quick-rank-card { padding:17px; border:1px solid #31556a; border-radius:8px; background:#07131e; }
+    .quick-rank-card h3 { display:flex; justify-content:space-between; gap:10px; margin-bottom:12px; }
+    .quick-rank-number { color:var(--gold); }
+    .quick-rank-card p { margin:8px 0; color:#d4dde4; }
+    .quick-rank-signals { color:var(--muted); font-size:14px; }
+    .evidence-tags { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
+    .evidence-tags span { padding:4px 8px; border:1px solid #2d5367; border-radius:12px; color:#bcd0dc; font-size:12px; }
+    .summary-priorities { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+    .summary-priorities strong { padding:8px 12px; border:1px solid #765b25; border-radius:6px; color:#f4ca68; background:#15120b; }
+    .evidence-dashboard { padding:24px; border-color:#3b7b86; }
+    .evidence-dashboard-head { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; margin-bottom:18px; }
+    .evidence-dashboard-head h2 { margin-bottom:5px; }
+    .evidence-dashboard-head p { margin:0; color:var(--muted); }
+    .evidence-layout { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(260px,.75fr); gap:18px; }
+    .evidence-table-wrap { overflow:auto; border:1px solid #294b5e; border-radius:8px; }
+    .evidence-table { width:100%; border-collapse:collapse; min-width:650px; }
+    .evidence-table th,.evidence-table td { padding:13px 12px; border-bottom:1px solid #203b4b; text-align:left; vertical-align:middle; }
+    .evidence-table th { color:#b9c9d3; background:#091722; font-size:13px; }
+    .evidence-table tr:last-child td { border-bottom:0; }
+    .evidence-rank { color:var(--gold); font-weight:900; }
+    .mini-meter { width:110px; height:7px; margin-top:6px; border-radius:4px; overflow:hidden; background:#172735; }
+    .mini-meter span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--cyan),var(--gold)); }
+    .source-bars { padding:17px; border:1px solid #294b5e; border-radius:8px; background:#07131e; }
+    .source-bars h3 { margin-bottom:14px; }
+    .source-bar { margin:14px 0; }
+    .source-bar-label { display:flex; justify-content:space-between; gap:8px; margin-bottom:6px; color:#cbd7df; font-size:14px; }
+    .source-bar-track { height:10px; overflow:hidden; border-radius:5px; background:#172735; }
+    .source-bar-fill { height:100%; border-radius:inherit; background:var(--bar-color,var(--cyan)); }
+    .evidence-raw { margin-top:14px; border:1px solid var(--line); border-radius:8px; background:#07101a; }
+    .evidence-raw > summary { padding:17px 20px; color:var(--gold); font-weight:800; cursor:pointer; list-style:none; }
+    .evidence-raw > summary::after { content:"+"; float:right; color:var(--cyan); font-size:20px; }
+    .evidence-raw[open] > summary::after { content:"−"; }
+    .evidence-raw-content { padding:0 14px 14px; }
+    @media (max-width:850px) { .source-grid,.detail-grid,.confidence-grid,.quick-result-grid,.evidence-layout { grid-template-columns:1fr; }.detail-grid .wide{grid-column:auto}.status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.life-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.life-top-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+    @media (max-width:650px) { .page{padding:12px} header{align-items:stretch;flex-direction:column}.actions,.actions>*{width:100%}.status-grid{grid-template-columns:1fr}.report-tabs{top:0;padding:6px}.report-tab{font-size:13px}.life-diagnosis-card{padding:16px}.life-category-grid,.life-top-grid,.life-interpretation{grid-template-columns:1fr}.life-total{min-width:0} }
+    @media print { body{background:#fff;color:#111}.actions{display:none}.card{background:#fff;border-color:#aaa}.meta,.empty,.notice{color:#444} }
+  </style>
+  <link rel="stylesheet" href="site-navigation.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div><div class="brand">IRIS MAPPING LAB</div><h1>회원 맞춤 건강관리 리포트</h1></div>
+      <nav class="actions">
+        <a class="button" href="reading.html">홍채 판독 결과</a>
+        <a class="button primary" href="shopping.html">쇼핑하기</a>
+        <a class="button" href="index.html">메인 화면</a>
+        <button class="button primary" type="button" onclick="window.print()">저장/인쇄</button>
+      </nav>
+    </header>
+
+    <nav class="report-tabs" aria-label="결과 보기">
+      <button class="report-tab is-active" type="button" data-report-view="total-view">총결과</button>
+      <button class="report-tab" type="button" data-report-view="life-diagnosis">라이프진단</button>
+      <button class="report-tab" type="button" data-report-view="evidence-view">상세 근거</button>
+    </nav>
+    <section id="total-view" class="report-view">
+      <section id="sourceStatus" class="status-grid" aria-label="자료 준비 상태"></section>
+      <section class="card integrated-summary"><h2>회원 맞춤 건강관리 종합 결과</h2><div id="integratedReading"></div></section>
+      <section class="card summary"><h2>종합 해석</h2><div id="combinedSummary"></div></section>
+    </section>
+    <section id="life-diagnosis" class="report-view" hidden>
+      <section class="card life-diagnosis-card"><div id="lifeStrategy"></div></section>
+    </section>
+    <section id="evidence-view" class="report-view" hidden>
+      <section class="card evidence-dashboard">
+        <div class="evidence-dashboard-head"><div><h2>근거 한눈에 보기</h2><p>관리 우선영역과 자료별 일치 여부를 표와 그래프로 정리했습니다.</p></div></div>
+        <div id="evidenceDashboard"></div>
+      </section>
+      <details class="evidence-raw">
+        <summary>전체 원문 근거 펼치기</summary>
+        <div class="evidence-raw-content">
+          <section class="source-grid">
+            <article class="card"><h2>문진 핵심</h2><div id="healthSummary"></div></article>
+            <article class="card"><h2>생활습관</h2><div id="lifestyleSummary"></div></article>
+            <article class="card"><h2>과거 병력</h2><div id="universeSummary"></div></article>
+            <article class="card"><h2>홍채 교차확인</h2><div id="irisSummary"></div></article>
+            <article class="card"><h2>가족력 참고</h2><div id="familySummary"></div></article>
+          </section>
+          <section class="detail-grid">
+            <article class="card"><h2>AI 보험상담 요약</h2><div id="insuranceSummary"></div></article>
+            <article class="card"><h2>라이프케어진단 상세 응답</h2><div id="healthDetails"></div></article>
+            <article class="card wide"><h2>핵심 영역 상세 · 간·심장·뇌</h2><div id="coreAreaSummary"></div></article>
+            <article class="card wide"><h2>홍채·문진 상세 교차 근거</h2><div id="crossComparison"></div></article>
+          </section>
+        </div>
+      </details>
+    </section>
+    <p class="notice">본 화면은 상담 순서를 정리하는 참고자료입니다. 홍채 관찰은 의학적으로 확립된 진단 검사가 아니며, 건강문진은 의료진의 진단과 치료를 대체하지 않습니다. 보험상담 결과 역시 가입 가능 여부나 특정 상품의 적합성을 확정하지 않습니다.</p>
+  </main>
+  <script src="care-engine.js"></script>
+  <script src="integrated-reading-engine.js"></script>
+  <script>
+    const sessionPhone = normalizePhone(localStorage.getItem("irisMappingSession"));
+    const iris = readJson("irisReadingResult");
+    const health = sessionPhone ? readJson(`irisHealthTest:${sessionPhone}`) : null;
+    const insurance = sessionPhone ? readJson(`irisAiInsuranceConsult_${sessionPhone}`) : null;
+    const irisForAccount = iris && (!iris.accountPhone || normalizePhone(iris.accountPhone) === sessionPhone) ? iris : null;
+    const universeHistory = sessionPhone ? readJson(`UniverseReportDB:${sessionPhone}`) : null;
+    const integratedResult = IrisIntegratedReadingEngine.analyze(sessionPhone);
+
+    function normalizePhone(value) { let digits=String(value||"").replace(/\D/g,""); if(digits.length===10&&digits.startsWith("10")) digits=`0${digits}`; return digits; }
+    function readJson(key) { try { return JSON.parse(localStorage.getItem(key)||"null"); } catch (_) { return null; } }
+    function escapeHtml(value) { return String(value??"").replace(/[&<>"']/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
+    function list(value) { return Array.isArray(value) ? value.filter(Boolean).join(", ") : (value || "미기록"); }
+    function observationConsultation(value) { return String(value||"").replace("어릴 때부터 이어진 체질적 경향으로 참고됩니다.","동공에 가까운 관찰 위치입니다. 발생 시점은 실제 문진과 병력 기록을 우선하여 확인합니다.").replace("성장 후 생활습관이나 환경 영향으로 참고됩니다.","홍채 바깥쪽 관찰 위치입니다. 발생 원인은 문진과 실제 병력 기록을 함께 확인합니다."); }
+    function isMeaningful(value) {
+      if (Array.isArray(value)) return value.some(isMeaningful);
+      const text=String(value??"").trim();
+      if (!text) return false;
+      return !["아니오","전혀 아니다","없음","해당 없음","정상","모름","잘 모름","미기록","특별히 없음","통증 없음","환경노출 없음","알레르기 없음"].includes(text);
+    }
+
+    const irisTop = buildIrisSummary(irisForAccount);
+    const healthResult = buildHealthSummary(health);
+    buildFamilyReference(health);
+    const healthTop = healthResult.groups;
+    const healthFindings = healthResult.findings;
+    const insuranceTop = buildInsuranceSummary(insurance);
+    buildLifestyleSummary();
+    buildUniverseSummary();
+    const coreAreaResults = buildCoreAreaSummary(irisForAccount, healthFindings);
+    buildCrossComparison(irisForAccount, healthFindings);
+    renderStatus();
+    renderIntegratedReading();
+    renderCombined();
+    renderLifeStrategy();
+    renderEvidenceDashboard();
+    setupReportTabs();
+
+    function buildIrisSummary(data) {
+      const target=document.querySelector("#irisSummary");
+      if (!data) { target.innerHTML='<p class="empty">현재 계정의 홍채 판독 결과가 없습니다.</p><a class="missing-link" href="index.html">홍채 판독하러 가기</a>'; return []; }
+      const grouped={};
+      [["우안",data.right||[]],["좌안",data.left||[]]].forEach(([eye,items])=>items.forEach((item)=>{
+        const key=item.area||item.code||"미분류";
+        grouped[key] ||= {area:key,score:0,eyes:new Set(),consultation:observationConsultation(item.consultation||item.dbConsultation||"상담 시 참고합니다.")};
+        grouped[key].score += Number(item.priorityScore||item.score||0); grouped[key].eyes.add(eye);
+      }));
+      const top=Object.values(grouped).map((item)=>({...item,score:item.score+(item.eyes.size>1?5:0)})).sort((a,b)=>b.score-a.score).slice(0,3);
+      const collarette=data.collarette||{};
+      const collaretteText=[collarette.right?.consultation,collarette.left?.consultation].filter(Boolean).join(" / ") || "꽃모양 영역 기록 없음";
+      target.innerHTML = top.map((item,index)=>`<div class="rank"><h3>${index+1}순위 · ${escapeHtml(item.area)}</h3><strong>${[...item.eyes].join("·")}</strong><span class="meta">${escapeHtml(item.consultation)}</span></div>`).join("") + `<p class="meta"><strong>좌우 꽃모양 영역 종합:</strong> ${escapeHtml(collaretteText)}</p>`;
+      return top;
+    }
+
+    function buildHealthSummary(data) {
+      const target=document.querySelector("#healthSummary");
+      const detailTarget=document.querySelector("#healthDetails");
+      if (!data) { target.innerHTML='<p class="empty">저장된 라이프케어진단이 없습니다.</p><a class="missing-link" href="health.html">라이프케어진단 작성하기</a>'; detailTarget.innerHTML='<p class="empty">자료 없음</p>'; return {groups:[],findings:[]}; }
+      const names={familyHistory:"가족력·과거력",lifestyle:"생활리듬·수면",diet:"식습관·섭취",stress:"스트레스 원인",personality:"성격·감정 반응",occupation:"직업환경",riskEnvironment:"사고·환경 노출",symptoms:"현재 증상",healthAwareness:"건강 관심도",foodSafetyAwareness:"식품 안전 인식",environmentalExposureAwareness:"환경 노출 인식",cookingStorageHabits:"조리·보관 습관",supplementUse:"건강식품 섭취",dentalOralHealth:"치아·구강 건강",allergySkinEnt:"알레르기·피부·이비인후과",mentalHealth:"정신건강·정서",maleHealth:"남성 건강",femaleHealth:"여성 건강",inflammationPattern:"반복 염증",pediatricHealth:"어린이 성장·건강",preschoolDevelopment:"유아 발달",lowerElementary:"초등 저학년",upperElementary:"초등 고학년"};
+      const meta=new Set(["phone","status","updatedAt","createdAt","answerLabels"]); const labels=data.answerLabels||{};
+      const groups=Object.entries(data).filter(([key,value])=>key!=="familyHistory"&&!meta.has(key)&&value&&typeof value==="object"&&!Array.isArray(value)).map(([key,answers])=>{
+        const findings=Object.entries(answers).filter(([name,value])=>isConcernFinding(name,value)).map(([name,value])=>({name,label:labels[name]||fallbackHealthLabel(name),value,group:key,groupTitle:names[key]||"기타 건강 영역"}));
+        return {key,title:names[key]||"기타 건강 영역",count:findings.length,findings};
+      }).filter((group)=>group.count).sort((a,b)=>b.count-a.count);
+      const findings=groups.flatMap((group)=>group.findings);
+      const top=groups.slice(0,6);
+      target.innerHTML = top.length ? `<p class="meta">주의·불편 응답 ${findings.length}개를 분야별로 정리했습니다.</p>`+top.map((group,index)=>`<div class="rank"><h3>${index+1}순위 · ${escapeHtml(group.title)}</h3><span class="meta">확인 항목 ${group.count}개</span></div>`).join("") : '<p class="empty">현재 저장 답변에서 뚜렷한 주의 응답이 확인되지 않습니다.</p>';
+      detailTarget.innerHTML=findings.length?`<ul class="response-list">${findings.slice(0,30).map((item)=>`<li><strong>${escapeHtml(item.groupTitle)}</strong> · ${escapeHtml(item.label)} <span class="meta">(${escapeHtml(list(item.value))})</span></li>`).join("")}</ul>${findings.length>30?`<p class="meta">그 외 ${findings.length-30}개 응답은 분야별 집계에 포함되었습니다.</p>`:""}`:'<p class="empty">표시할 주의 응답이 없습니다.</p>';
+      return {groups:top,findings};
+    }
+
+    function buildFamilyReference(data) {
+      const target=document.querySelector("#familySummary");
+      const answers=data?.familyHistory||{};
+      const labels=data?.answerLabels||{};
+      const items=Object.entries(answers).filter(([,value])=>isMeaningful(value));
+      target.innerHTML=items.length
+        ? `<ul>${items.slice(0,8).map(([name,value])=>`<li><strong>${escapeHtml(labels[name]||fallbackHealthLabel(name))}</strong><br><span class="meta">${escapeHtml(list(value))}</span></li>`).join("")}</ul><p class="meta">가족력은 점수와 관리 우선순위를 올리지 않으며, 본인의 현재 문진·병력·홍채와 함께 확인될 때만 참고합니다.</p>`
+        : '<p class="empty">저장된 가족력 참고사항이 없습니다.</p>';
+    }
+
+    function fallbackHealthLabel(name) {
+      const labels={fatigue:"쉽게 피로해진다",jaundice:"피부나 눈 흰자가 노랗게 보인다",headache:"두통이나 편두통이 있다",dizziness:"어지럽거나 균형을 잃는다",memory:"기억력이나 집중력이 떨어졌다",sleepDifficulty:"잠들기 어렵다",wakeAtDawn:"새벽에 자주 깬다",tiredAfterSleep:"자고 일어나도 피곤하다",chestPain:"가슴 통증이 있다",palpitations:"가슴 두근거림이나 불규칙한 맥박이 있다",coldHandsFeet:"손발이 차다",legSwelling:"다리나 발이 붓는다",heartUltrasound:"심장 초음파 검사에서 이상을 들은 적이 있다",heartProcedure:"심장 관련 수술이나 시술 경험이 있다",cough:"기침이 자주 난다",phlegm:"가래가 자주 생긴다",shortnessBreath:"숨이 차거나 호흡이 어렵다",indigestion:"소화가 잘 안 된다",reflux:"속쓰림이나 위산 역류가 있다",constipation:"변비가 있다",diarrhea:"설사가 잦다",nocturia:"밤에 화장실을 자주 간다",darkFoamyUrine:"소변이 진하거나 거품이 오래 남는다"};
+      return labels[name]||"세부 문항";
+    }
+
+    function isConcernFinding(name,value) {
+      const values=Array.isArray(value)?value:[value];
+      const protective=new Set(["healthInterest","healthSearch","healthCheckupHabit","healthExpenseWilling","checkOrigin","checkLabel","checkAdditives","checkSugarSodium","organicFood","glassSteelUse","brushingBeforeSleep","flossInterdental","regularDentalCheckup"]);
+      const profileFields=new Set(["name","phone","gender","age","height","weight","bloodType","maritalStatus","childCount","guardianName","guardianRelation","studentGrade"]);
+      if(profileFields.has(name)) return false;
+      return values.some((raw)=>{
+        const text=String(raw??"").trim();
+        if(protective.has(name)) return text==="아니오"||text==="전혀 아니다";
+        if(!isMeaningful(text)) return false;
+        if(name==="brushingCount") return text==="하루 1회 이하";
+        if(name==="brushingDuration") return text==="1분 미만";
+        if(["예","현재 있음","과거 있음","병원 진단 있음","수술/시술 있음","재발 있음","현재 불편감","악화 습관","후유증","가끔","자주","거의 매일","가벼움","중간","심함","조금 걱정됨","많이 걱정됨","매우 걱정됨"].includes(text)) return true;
+        return !["하루 2회","하루 3회 이상","1~2분","2~3분","3분 이상"].includes(text);
+      });
+    }
+
+    function allIrisObservations(data) {
+      if(!data) return [];
+      const source=data.allObservations||{right:data.right||[],left:data.left||[]};
+      return [["우안",source.right||[]],["좌안",source.left||[]]].flatMap(([eye,items])=>items.map((item)=>({...item,eyeLabel:eye})));
+    }
+
+    function comparisonThemes() {
+      return [
+        {hours:[11,12,1],title:"뇌·신경·정서",keywords:["뇌","신경","두통","어지","기억","집중","수면","불안","우울","스트레스","감정"],fieldNames:["sleepDifficulty","wakeAtDawn","tiredAfterSleep","daytimeSleepiness","fatigue","headache","dizziness","fainting","numbness","weakness","tremor","memory","seizure","depressedMood","panicFeeling","attentionDifficulty","futureAnxiety"]},
+        {hours:[2,3],title:"폐·기관지·호흡",keywords:["폐","기관지","호흡","기침","가래","천식","비염","흉부"],fieldNames:["cough","phlegm","shortnessBreath","wheezing","chestTightness","recurrentRespiratory","rhinitis","allergicRhinitis","sinusitis"]},
+        {hours:[4],title:"위·췌장·소화",keywords:["위","췌장","소화","복부","위산","속쓰림","구토"],fieldNames:["indigestion","bloating","nausea","reflux","abdominalPain"]},
+        {hours:[5,6],title:"신장·비뇨·골반",keywords:["신장","요관","소변","비뇨","방광","골반","생식","전립선","여성"],fieldNames:["frequentUrine","nocturia","painfulUrine","incompleteUrine","urineLeak","bloodUrine","darkFoamyUrine","flankPain","weakUrineFlow","prostateDiscomfort"]},
+        {hours:[7],title:"간·담낭",keywords:["간","담낭","간수치","황달","음주","숙취"],fieldNames:["jaundice","fatigue","alcoholUse","drinkingFrequency","hangover","liverDisease"]},
+        {hours:[8],title:"장·비장·면역",keywords:["소장","대장","장","변비","설사","비장","면역"],fieldNames:["constipation","diarrhea","stoolChange","bloodStool","recurrentInflammationArea"]},
+        {hours:[9],title:"심장·순환·흉부",keywords:["심장","순환","혈압","가슴","두근","혈관","판막"],fieldNames:["chestPain","palpitations","coldHandsFeet","standingDizziness","legSwelling","legVeins","easyBruising","heartUltrasound","heartProcedure","heartValve"]},
+        {hours:[10],title:"목·어깨·림프·갑상선",keywords:["목","어깨","림프","갑상선","편도"],fieldNames:["soreThroat","neckSwelling","tonsillitis","neckBackPain"]}
+      ];
+    }
+
+    function healthMatchesTheme(item,theme) {
+      if(theme.fieldNames.includes(item.name)) return true;
+      const text=`${item.label} ${list(item.value)}`;
+      return theme.keywords.some((word)=>text.includes(word));
+    }
+
+    function isHistoricalFinding(item) {
+      const text=`${item.name} ${item.label} ${list(item.value)}`;
+      return item.group==="familyHistory"||/History|Diagnosis|Surgery|Procedure|past/i.test(item.name)||/(과거|진단|수술|시술|재발|가족력)/.test(text);
+    }
+
+    function isCurrentFinding(item) {
+      const text=list(item.value);
+      return !isHistoricalFinding(item)||/(현재|가끔|자주|매일|중간|심함|불편)/.test(text);
+    }
+
+    function renderFindingEvidence(items,emptyText) {
+      return items.length
+        ? escapeHtml(items.slice(0,8).map((item)=>`${item.label}(${list(item.value)})`).join(", "))
+        : emptyText;
+    }
+
+    function buildCoreAreaSummary(data,findings) {
+      const target=document.querySelector("#coreAreaSummary");
+      if(!data){target.innerHTML='<p class="empty">홍채 판독 자료가 없습니다.</p>';return [];}
+      const irisItems=allIrisObservations(data);
+      const coreThemes=comparisonThemes().filter((theme)=>["간·담낭","심장·순환·흉부","뇌·신경·정서"].includes(theme.title));
+      const results=coreThemes.map((theme)=>({
+        ...theme,
+        eyeItems:irisItems.filter((item)=>theme.hours.includes(Number(String(item.code||"").split("-")[0]))),
+        healthItems:findings.filter((item)=>healthMatchesTheme(item,theme))
+      }));
+      const legacyNotice=!data.allObservations?'<p class="notice">이 결과는 이전 방식으로 저장되어 좌우 상위 3개 관찰값만 포함합니다. 간·심장·뇌 전체 영역을 확인하려면 메인 화면에서 판독하기를 한 번 다시 실행해 주세요.</p>':'';
+      target.innerHTML=legacyNotice+results.map((result)=>`<div class="match-box"><h3>${escapeHtml(result.title)}</h3><p><strong>홍채지도에서 확인된 항목:</strong> ${result.eyeItems.length?escapeHtml(result.eyeItems.map((item)=>`${item.eyeLabel} ${item.code} ${item.area}(${item.score})`).join(", ")):'기준을 넘은 저장 관찰값 없음'}</p><p><strong>라이프케어진단 관련 응답:</strong> ${result.healthItems.length?escapeHtml(result.healthItems.slice(0,10).map((item)=>`${item.label}(${list(item.value)})`).join(", ")):'관련 주의 응답 없음'}</p><p class="meta">한쪽에 기록이 없더라도 질환이 없다는 뜻은 아니며, 양쪽에 함께 기록되어도 질환을 확정하지 않습니다.</p></div>`).join("");
+      return results;
+    }
+
+    function buildCrossComparison(data,findings) {
+      const target=document.querySelector("#crossComparison");
+      if(!data||!findings.length){target.innerHTML='<p class="empty">홍채 판독과 라이프케어진단 자료가 모두 있어야 교차 참고가 가능합니다.</p>';return;}
+      const themes=comparisonThemes();
+      const irisItems=allIrisObservations(data);
+      const matches=themes.map((theme)=>{
+        const eyeItems=irisItems.filter((item)=>theme.hours.includes(Number(String(item.code||"").split("-")[0])));
+        const healthItems=findings.filter((item)=>healthMatchesTheme(item,theme));
+        return {...theme,eyeItems,healthItems};
+      }).filter((theme)=>theme.eyeItems.length&&theme.healthItems.length).sort((a,b)=>(b.eyeItems.length+b.healthItems.length)-(a.eyeItems.length+a.healthItems.length));
+      target.innerHTML=matches.length
+        ? `<p><strong>최종 우선 확인 부위:</strong> ${escapeHtml(matches.slice(0,3).map((match)=>match.title).join(", "))}</p>`+matches.slice(0,6).map((match)=>{
+            const historyItems=match.healthItems.filter(isHistoricalFinding);
+            const currentItems=match.healthItems.filter(isCurrentFinding);
+            return `<div class="match-box">
+              <h3>${escapeHtml(match.title)}</h3>
+              <p><strong>① 과거 치료·병력 근거:</strong> ${renderFindingEvidence(historyItems,"관련 기록 없음")}</p>
+              <p><strong>② 현재 증상·생활습관 근거:</strong> ${renderFindingEvidence(currentItems,"관련 기록 없음")}</p>
+              <p><strong>③ 홍채지도 관찰 근거:</strong> ${escapeHtml(match.eyeItems.slice(0,8).map((item)=>`${item.eyeLabel} ${item.code} ${item.area} · ${item.type||"관찰 신호"} ${item.score||0}`).join(", "))}</p>
+              <p><strong>종합 판단:</strong> 과거 기록과 현재 불편 중 확인된 내용이 전통 홍채지도의 ${escapeHtml(match.title)} 관련 관찰 영역과 같은 상담 주제로 겹칩니다. 따라서 이 부위는 현재 생활관리와 전문 검사·상담에서 우선 확인할 영역으로 정리합니다.</p>
+              <p class="meta">이는 해당 장기가 약하다는 판정이나 증상의 원인을 확정한 결과가 아닙니다.</p>
+            </div>`;
+          }).join("")
+        : '<p class="empty">병력·현재 증상과 홍채 관찰이 같은 상담 주제로 함께 기록된 영역이 없습니다. 이것은 정상·질환 여부를 뜻하지 않습니다.</p>';
+    }
+
+    function buildInsuranceSummary(data) {
+      const target=document.querySelector("#insuranceSummary");
+      if (!data) { target.innerHTML='<p class="empty">저장된 AI 보험상담이 없습니다.</p><a class="missing-link" href="ai-health.html">보험상담 작성하기</a>'; return []; }
+      const answers=data.answers||{}; const recs=Array.isArray(data.recommendation)?data.recommendation:[];
+      target.innerHTML=`<p><strong>걱정 대상:</strong> ${escapeHtml(list(answers.worryTarget))}<br><strong>주요 걱정:</strong> ${escapeHtml(list(answers.personalRiskConcern))}<br><strong>현재 보험:</strong> ${escapeHtml(list(answers.currentInsurance))}<br><strong>예산:</strong> ${escapeHtml(list(answers.budget))}</p>` + (recs.length?recs.slice(0,5).map((item,index)=>`<div class="rank"><h3>${index+1}순위 · ${escapeHtml(item.title)}</h3><span class="meta">${escapeHtml(item.reason)}</span></div>`).join(""):'<p class="empty">상담 우선순위가 아직 생성되지 않았습니다.</p>');
+      return recs;
+    }
+
+    function buildLifestyleSummary() {
+      const target=document.querySelector("#lifestyleSummary");
+      const matches=integratedResult.results.flatMap((group)=>group.selected.lifestyleMatches||[]);
+      const uniqueMatches=[...new Map(matches.map((item)=>[item.name,item])).values()].slice(0,8);
+      target.innerHTML=uniqueMatches.length
+        ? `<ul>${uniqueMatches.map((item)=>`<li><strong>${escapeHtml(item.label)}</strong><br><span class="meta">${escapeHtml(list(item.value))}</span></li>`).join("")}</ul>`
+        : '<p class="empty">현재 관리 부위와 직접 연결되는 생활습관 응답이 없습니다.</p>';
+    }
+
+    function buildUniverseSummary() {
+      const target=document.querySelector("#universeSummary");
+      const latest=Array.isArray(universeHistory)?universeHistory.at(-1):null;
+      const areas=latest&&Array.isArray(latest.부위별점수JSON)?latest.부위별점수JSON.filter((item)=>Number(item.score)>0).slice(0,6):[];
+      target.innerHTML=areas.length
+        ? areas.map((item)=>`<div class="rank"><strong>${escapeHtml(item.name)}</strong><span class="meta">병력 기반 참고 ${Number(item.score)||0}%</span></div>`).join("")
+        : '<p class="empty">저장된 유니버스 병력 리포트가 없습니다.</p><a class="missing-link" href="universe.html">병력 리포트 확인하기</a>';
+    }
+
+    function renderStatus() {
+      const hasLifestyle=integratedResult.results.some((group)=>(group.selected.lifestyleMatches||[]).length);
+      const items=[["문진",!!health],["유니버스 병력",Array.isArray(universeHistory)&&universeHistory.length>0],["생활습관",hasLifestyle],["홍채 교차확인",!!irisForAccount]];
+      document.querySelector("#sourceStatus").innerHTML=items.map(([name,ready])=>`<div class="card status"><strong>${name}</strong><b class="${ready?"ready":""}">${ready?"준비 완료":"자료 없음"}</b></div>`).join("");
+    }
+
+    function renderIntegratedReading() {
+      const target=document.querySelector("#integratedReading");
+      const result=integratedResult;
+      if(!result.results.length){
+        target.innerHTML='<p class="empty">종합 관리 우선순위를 만들 수 있는 저장 자료가 없습니다. 라이프케어진단을 작성하고 필요한 자료를 저장해 주세요.</p>';
+        return;
+      }
+      const confidence=result.confidence;
+      const confidenceHtml=`<div class="quick-confidence"><span>문진 일치도<strong>${confidence.irisQuestionnaire===null?"확인 불가":confidence.irisQuestionnaire+"%"}</strong></span><span>종합 신뢰도<strong>${confidence.overall===null?confidence.overallLabel:confidence.overall+"%"}</strong></span></div>`;
+      const questionnaireWarning=!result.hasQuestionnaire?'<p class="low-confidence">문진이 없어 종합 결과의 신뢰도를 낮게 표시합니다. 홍채 관찰값은 후보 확인에만 반영됩니다. <a class="missing-link" href="health.html">라이프케어진단 작성하기</a></p>':'';
+      const ranks=result.results.map((group,index)=>{
+        const selected=group.selected;
+        const currentQuestionnaire=selected.currentQuestionnaireMatches||selected.questionnaireMatches||[];
+        const signals=currentQuestionnaire.length?currentQuestionnaire.slice(0,2).map((item)=>item.label).join(", "):"현재 문진 일치 항목 없음";
+        const evidence=[];
+        if(selected.pastHealthMatches?.length)evidence.push("과거 치료");
+        if(selected.historyMatches.length)evidence.push("병력 PDF");
+        if(selected.lifestyleMatches.length)evidence.push("생활습관");
+        if(selected.irisItems.length)evidence.push("홍채 교차확인");
+        return `<article class="quick-rank-card"><h3><span><span class="quick-rank-number">${index+1}순위</span> ${escapeHtml(selected.name)}</span><span class="meta">${escapeHtml(selected.managementPriority)}</span></h3><p class="quick-rank-signals">${escapeHtml(signals)}</p><p>문진 일치도 <strong>${selected.questionnaireMatchPercent===null?"확인 불가":selected.questionnaireMatchPercent+"%"}</strong></p><div class="evidence-tags">${(evidence.length?evidence:["추가 자료 필요"]).map((item)=>`<span>${escapeHtml(item)}</span>`).join("")}</div></article>`;
+      }).join("");
+      target.innerHTML=confidenceHtml+questionnaireWarning+`<div class="quick-result-grid">${ranks}</div>`;
+    }
+
+    function renderCombined() {
+      const priorities=integratedResult.results.slice(0,3).map((group)=>group.selected.name);
+      const priorityHtml=priorities.length?`<div class="summary-priorities">${priorities.map((name,index)=>`<strong>${index+1}. ${escapeHtml(name)}</strong>`).join("")}</div>`:"";
+      const summary=priorities.length
+        ? `현재는 ${priorities.join(", ")} 순서로 관리 우선도가 확인됩니다. 문진을 중심으로 생활습관, 과거 병력, 홍채 관찰을 교차 확인한 결과입니다.`
+        : "종합할 저장 자료가 없습니다. 라이프케어진단과 홍채분석을 먼저 진행해 주세요.";
+      document.querySelector("#combinedSummary").innerHTML=priorityHtml+`<p>${escapeHtml(summary)}</p>`;
+    }
+
+    function renderLifeStrategy() {
+      const care=IrisCareEngine.analyze(sessionPhone);
+      const definitions=[
+        {title:"수면 · 피로",mark:"SL",color:"#bd8cff",words:["수면","잠","새벽","피로","졸린","코골이","회복"]},
+        {title:"안구",mark:"EY",color:"#45a6ff",words:["눈","시력","안구","충혈","안압"]},
+        {title:"코 · 호흡기",mark:"BR",color:"#49e1df",words:["코막힘","콧물","비염","기침","가래","천식","기관지","호흡","숨참","편도"]},
+        {title:"소화기",mark:"DG",color:"#85df45",words:["소화","더부룩","속쓰림","위산","역류","구토","위염","복통"]},
+        {title:"장 · 배변",mark:"GT",color:"#efa33c",words:["변비","설사","대변","배변","치질","장염","가스"]},
+        {title:"비뇨 · 신장",mark:"KD",color:"#5faeff",words:["소변","야간뇨","신장","옆구리","방광","부종","요로"]},
+        {title:"순환기",mark:"CV",color:"#ff7d83",words:["심장","혈압","두근","가슴","순환","혈관","손발","멍"]},
+        {title:"근골격",mark:"MS",color:"#efb343",words:["목통증","어깨","허리","무릎","관절","근육","손목","경련","쥐가"]},
+        {title:"피부 · 면역",mark:"IM",color:"#b991ff",words:["피부","알레르기","가려움","무좀","탈모","비듬","염증","감기","면역"]},
+        {title:"신경 · 정신",mark:"NS",color:"#56a9ff",words:["스트레스","불안","우울","두통","어지럼","기억","집중","감정","예민"]},
+        {title:"구강 · 치아",mark:"OR",color:"#ee7da8",words:["치아","잇몸","구강","양치","치주","치질"]},
+        {title:"여성 · 남성",mark:"WH",color:"#d886ff",words:["생리","질염","자궁","난소","전립선","생식","폐경"]}
+      ];
+      const buckets=definitions.map((definition)=>({...definition,items:[]}));
+      const other={title:"기타",mark:"ET",color:"#53dadd",items:[]};
+
+      (healthResult.findings||[]).forEach((item)=>{
+        const text=`${item.label||""} ${item.name||""} ${list(item.value)}`;
+        const bucket=buckets.find((candidate)=>candidate.words.some((word)=>text.includes(word)))||other;
+        if(!bucket.items.some((existing)=>existing.label===item.label))bucket.items.push(item);
+      });
+
+      const visible=[...buckets,other].filter((group)=>group.items.length).sort((a,b)=>b.items.length-a.items.length).slice(0,6);
+      const total=visible.reduce((sum,group)=>sum+group.items.length,0);
+      const categories=visible.map((group)=>{
+        const preview=group.items.slice(0,3);
+        const more=group.items.length-preview.length;
+        return `<article class="life-category-card" style="--category:${group.color}">
+          <div class="life-category-head"><span class="life-category-mark">${group.mark}</span><h3>${escapeHtml(group.title)}</h3><span class="life-count">${group.items.length}개</span></div>
+          <ul class="life-category-list">${preview.map((item)=>`<li>${escapeHtml(item.label)}</li>`).join("")}</ul>
+          ${more?`<div class="life-more">외 ${more}개 응답</div>`:""}
+        </article>`;
+      }).join("");
+
+      const top=visible.slice(0,5);
+      const topHtml=top.map((group,index)=>`<article class="life-top-item" style="--category:${group.color}"><b>${index+1}위</b><strong>${escapeHtml(group.title)}</strong><span>${group.items.length}개 항목</span></article>`).join("");
+      const topNames=top.slice(0,3).map((group)=>group.title);
+      const lowScores=Object.entries(care.scores||{}).filter(([,score])=>score<60).sort((a,b)=>a[1]-b[1]).map(([name])=>name).slice(0,3);
+      const interpretation=topNames.length
+        ? `${topNames.join(", ")} 관련 응답이 상대적으로 많이 확인됩니다. ${lowScores.length?`${lowScores.join(", ")} 생활관리도 함께 살펴보는 것이 좋습니다.`:"현재 생활관리 습관을 유지하며 변화를 기록해 보세요."}`
+        : "현재 저장된 문진에서 별도로 묶어 표시할 주의 응답이 없습니다.";
+
+      document.querySelector("#lifeStrategy").innerHTML=`
+        <div class="life-summary-heading"><h2>라이프케어진단 요약</h2><p>현재 응답을 항목별로 분류하여 한눈에 확인하세요.</p></div>
+        ${visible.length?`<div class="life-category-grid">${categories}</div>`:'<p class="empty">표시할 라이프케어진단 응답이 없습니다.</p>'}
+        ${top.length?`<section class="life-top-section"><div class="life-top-heading"><h3>현재 주요 응답 TOP 5</h3><span>중복 항목 제외 기준</span></div><div class="life-top-grid">${topHtml}</div></section>`:""}
+        <section class="life-interpretation"><div><h3>종합 해석</h3><p>${escapeHtml(interpretation)}</p></div><div class="life-total">관리가 필요한 영역<strong>${visible.length}개 영역</strong></div></section>`;
+    }
+
+    function renderEvidenceDashboard() {
+      const target=document.querySelector("#evidenceDashboard");
+      const latestUniverse=Array.isArray(universeHistory)?universeHistory.at(-1):null;
+      const universeAreas=latestUniverse&&Array.isArray(latestUniverse.부위별점수JSON)
+        ? latestUniverse.부위별점수JSON.filter((item)=>Number(item.score)>0)
+        : [];
+      const irisItems=irisForAccount?allIrisObservations(irisForAccount):[];
+      const lifestyleItems=[...new Map(integratedResult.results.flatMap((group)=>group.selected.lifestyleMatches||[]).map((item)=>[item.name,item])).values()];
+      const sources=[
+        {label:"현재 문진",count:healthFindings.length,color:"#36d8d0",items:healthFindings.slice(0,4).map((item)=>item.label),role:"현재 불편과 증상을 가장 먼저 반영"},
+        {label:"생활습관",count:lifestyleItems.length,color:"#85df45",items:lifestyleItems.slice(0,4).map((item)=>item.label),role:"반복되는 원인과 관리 습관 확인"},
+        {label:"과거 병력",count:universeAreas.length,color:"#e8b74c",items:universeAreas.slice(0,4).map((item)=>item.name),role:"과거 진료·검사 이력을 교차 확인"},
+        {label:"홍채 관찰",count:irisItems.length,color:"#8f83ff",items:irisItems.slice(0,4).map((item)=>`${item.code} ${item.area}`),role:"문진과 병력의 관련 위치를 보조 확인"}
+      ];
+      const maxCount=Math.max(1,...sources.map((item)=>item.count));
+      const tableRows=sources.map((source)=>`<tr><td><strong>${source.label}</strong></td><td>${source.count}개</td><td>${source.items.length?escapeHtml(source.items.join(", ")):"저장 자료 없음"}</td><td>${source.role}</td></tr>`).join("");
+      const table=`<div class="evidence-table-wrap"><table class="evidence-table"><thead><tr><th>자료</th><th>확인 수</th><th>대표 근거</th><th>종합 결과에서의 역할</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+      const bars=`<aside class="source-bars"><h3>자료별 확인 항목</h3>${sources.map((item)=>`<div class="source-bar"><div class="source-bar-label"><span>${item.label}</span><strong>${item.count}개</strong></div><div class="source-bar-track"><div class="source-bar-fill" style="--bar-color:${item.color};width:${Math.round(item.count/maxCount*100)}%"></div></div></div>`).join("")}</aside>`;
+      target.innerHTML=`<div class="evidence-layout">${table}${bars}</div>`;
+    }
+
+    function setupReportTabs() {
+      const tabs=[...document.querySelectorAll("[data-report-view]")];
+      const views=[...document.querySelectorAll(".report-view")];
+      const allowed=new Set(views.map((view)=>view.id));
+      function activate(viewId,updateHash) {
+        const next=allowed.has(viewId)?viewId:"total-view";
+        views.forEach((view)=>{ view.hidden=view.id!==next; });
+        tabs.forEach((tab)=>{
+          const active=tab.dataset.reportView===next;
+          tab.classList.toggle("is-active",active);
+          tab.setAttribute("aria-selected",String(active));
+        });
+        if(updateHash)history.replaceState(null,"",next==="total-view"?location.pathname:`#${next}`);
+      }
+      tabs.forEach((tab)=>tab.addEventListener("click",()=>activate(tab.dataset.reportView,true)));
+      activate(location.hash.slice(1),false);
+    }
+  </script>
+  <script src="site-navigation.js"></script>
+</body>
+</html>

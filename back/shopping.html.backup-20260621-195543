@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>건강관리 큐레이션 | IRIS MAPPING LAB</title>
+  <style>
+    :root{color-scheme:dark;--bg:#05090f;--panel:#0b1420;--line:#24475b;--text:#f5f7fa;--muted:#9db0bd;--cyan:#36d8d0;--gold:#e7b74e}*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#07121b,#030609);color:var(--text);font-family:Arial,"Noto Sans KR",sans-serif}.page{width:min(1180px,100%);margin:auto;padding:22px}header{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:18px 0 22px;border-bottom:1px solid var(--line)}.brand{color:var(--cyan);font-size:13px;font-weight:800;letter-spacing:.08em}h1{margin:7px 0 0;font-size:clamp(28px,4vw,42px)}h2{margin:0 0 14px}h3{margin:0 0 8px;color:var(--gold)}p,li{line-height:1.65}.actions,.search-actions{display:flex;gap:8px;flex-wrap:wrap}.button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 15px;border:1px solid var(--line);border-radius:7px;background:#0b1522;color:var(--text);font-weight:700;text-decoration:none;cursor:pointer}.primary{background:var(--cyan);border-color:var(--cyan);color:#061313}.card{margin-top:14px;padding:20px;border:1px solid var(--line);border-radius:8px;background:rgba(10,19,31,.95)}.purpose-grid,.ingredient-grid,.box-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.purpose,.ingredient,.box-item{padding:16px;border:1px solid #31556a;border-radius:7px;background:#09111c}.check{color:var(--cyan);font-weight:800}.tag{display:inline-block;margin:3px 4px 3px 0;padding:5px 8px;border:1px solid #2d7181;border-radius:5px;color:var(--cyan);font-size:13px}.muted{color:var(--muted)}.warning{border-left:3px solid var(--gold);padding:14px 16px;background:#111018}.why-panel{display:none;margin-top:12px;padding:14px;border-left:3px solid var(--cyan);background:#08131c}.why-panel.open{display:block}.search-actions a:nth-child(2){border-color:var(--gold)}.empty{text-align:center}.admin-link{color:var(--muted);font-size:13px}@media(max-width:820px){.purpose-grid,.ingredient-grid,.box-grid{grid-template-columns:1fr}}@media(max-width:620px){.page{padding:12px}header{align-items:stretch;flex-direction:column}.actions,.actions>*{width:100%}}
+  </style>
+  <link rel="stylesheet" href="site-navigation.css">
+</head>
+<body>
+<main class="page">
+  <header><div><div class="brand">IRIS MAPPING LAB</div><h1>건강관리 큐레이션</h1></div><nav class="actions"><a class="button" href="final-report.html">최종 판독</a><a class="button" href="subscription.html">구독하기</a><a class="button" href="index.html">메인 화면</a></nav></header>
+  <section class="card"><h2>1. 왜 추천되었는가</h2><div id="reasonSummary"></div><button id="whyButton" class="button" type="button">왜 추천되었나요?</button><div id="whyPanel" class="why-panel"></div></section>
+  <section class="card"><h2>2. 어떤 도움을 위한 추천인가</h2><div id="purposes" class="purpose-grid"></div></section>
+  <section class="card"><h2>3. 추천 성분</h2><div id="ingredients" class="ingredient-grid"></div></section>
+  <section class="card"><h2>4. 왜 이 성분인가</h2><div id="ingredientReasons" class="ingredient-grid"></div></section>
+  <section class="card"><h2>5. 추천 검색어 · 6. 쇼핑 검색</h2><div id="searchGroups"></div></section>
+  <section class="card"><h2>추천 제품</h2><div id="recommendedProducts" class="ingredient-grid"></div></section>
+  <section class="card"><h2>건강박스 자동 구성</h2><p id="healthType"></p><div id="healthBox" class="box-grid"></div></section>
+  <section class="card"><h2>제품 선별 원칙</h2><ol id="conditions"></ol><p class="muted">실시간 상품명·가격·후기·재고 선별은 쇼핑몰 공식 API 또는 관리자 제품DB 자료가 있을 때 적용됩니다.</p></section>
+  <p id="warning" class="warning"></p>
+  <p><a class="admin-link" href="product-admin.html">관리자 제품 설정</a></p>
+</main>
+<script src="care-engine.js"></script><script src="shopping-recommendation-db.js"></script>
+<script>
+  const analysis=IrisCareEngine.analyze(); const db=shoppingRecommendationDB;
+  const adminSettings=readLocal("irisAdminShoppingSettings")||{}; const adminProducts=readLocal("irisAdminProducts")||[];
+  const ingredientHelp={
+    "마그네슘":["긴장 관리","수면 습관 관리","근육 기능 유지"],"비타민B군":["에너지 생성","피로 관리","영양 대사"],
+    "밀크씨슬":["간 건강 기능성 원료 비교","실리마린 함량 확인","음주·복용 성분 점검"],"오메가3":["혈행 건강","중성지질 관리","성분 중복 확인"],
+    "코엔자임Q10":["항산화 관리","혈압 관리 참고","복용약 상호작용 확인"],"프로바이오틱스":["장내 균형","배변 리듬","균주·보장균수 비교"],
+    "프리바이오틱스":["유익균 먹이","장 건강 관리","당류 함량 확인"],"식이섬유":["배변 리듬","포만감 관리","수분 섭취 병행"],
+    "여성 유산균":["여성 유익균 균형","질·장 건강 관리","균주명 확인"],"크랜베리":["비뇨 건강 관리","당류 확인","약 복용 주의"],
+    "비타민C":["항산화 관리","철 흡수 보조","섭취량 확인"],"비타민D":["뼈 건강","면역 기능 유지","혈중 수치 확인"],"아연":["정상 면역 기능","세포 분열","장기 고용량 주의"],
+    "L-테아닌":["긴장 완화 도움","카페인 섭취 점검","수면 습관 병행"]
+  };
+  const unique=(items)=>[...new Set(items.filter(Boolean))]; const esc=(v)=>String(v??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  function readLocal(key){try{return JSON.parse(localStorage.getItem(key)||"null")}catch(_){return null}}
+  const primary=analysis.primary; const findings=unique(primary.flatMap((item)=>item.matchedFindings.map((finding)=>finding.label))).slice(0,8);
+  const irisItems=unique(primary.flatMap((item)=>item.matchedIris.map((iris)=>`${iris.eyeLabel} ${iris.code} ${iris.area||item.title}`))).slice(0,8);
+  const purposes=unique(primary.flatMap((item)=>item.goals)); const ingredients=unique(primary.flatMap((item)=>item.ingredients));
+  document.querySelector("#reasonSummary").innerHTML=primary.length?`<p>회원님에게는 <strong>${esc(findings.join(", ")||"생활습관 관리 신호")}</strong>가 확인되었습니다.</p><p>홍채지도에서는 <strong>${esc(irisItems.join(", ")||"우선 관찰 영역")}</strong>이 함께 기록되었습니다.</p><p>따라서 <strong>${esc(purposes.slice(0,3).join(", "))}</strong>를 먼저 관리할 방향으로 정리했습니다.</p>`:'<p class="empty">저장된 판독·문진 자료에서 추천 근거를 만들지 못했습니다.</p>';
+  document.querySelector("#whyPanel").innerHTML=`<p><strong>관찰영역</strong><br>${esc(irisItems.join(", ")||"기록 없음")}</p><p><strong>회원 증상·습관</strong><br>${esc(findings.join(", ")||"기록 없음")}</p><p><strong>추천 이유</strong><br>${esc(purposes.slice(0,4).join(", ")||"기본 건강관리") }가 우선으로 보여 관련 성분을 비교 대상으로 제시했습니다.</p>`;
+  document.querySelector("#whyButton").addEventListener("click",()=>document.querySelector("#whyPanel").classList.toggle("open"));
+  document.querySelector("#purposes").innerHTML=purposes.map((item)=>`<div class="purpose"><span class="check">✓</span> ${esc(item)}</div>`).join("")||'<p class="empty">관리 목적 없음</p>';
+  document.querySelector("#ingredients").innerHTML=ingredients.map((item)=>`<div class="ingredient"><h3>${esc(item)}</h3><span class="tag">우선 비교 성분</span></div>`).join("")||'<p class="empty">추천 성분 없음</p>';
+  document.querySelector("#ingredientReasons").innerHTML=ingredients.map((item)=>`<div class="ingredient"><h3>${esc(item)}</h3><p>도움이 될 수 있는 부분</p><ul>${(ingredientHelp[item]||["성분표 확인","일일 섭취량 확인","주의사항 확인"]).map((text)=>`<li>${esc(text)}</li>`).join("")}</ul></div>`).join("");
+  function groupForIngredient(name){return db.productGroupDB.find((group)=>group.title===name||group.title.includes(name)||name.includes(group.title))}
+  document.querySelector("#searchGroups").innerHTML=ingredients.map((ingredient)=>{const group=groupForIngredient(ingredient);const terms=group?(adminSettings[group.id]?.keywords||db.searchKeywordDB[group.id]||[]):[`${ingredient} 건강기능식품`,`${ingredient} 함량 표시`];const query=terms[0]||ingredient;return `<div class="ingredient"><h3>${esc(ingredient)}</h3><div>${terms.map((term)=>`<span class="tag">${esc(term)}</span>`).join("")}</div><div class="search-actions"><a class="button primary" target="_blank" rel="noopener" href="https://search.shopping.naver.com/search/all?query=${encodeURIComponent(query)}">네이버에서 비교하기</a><a class="button" target="_blank" rel="noopener" href="https://search.naver.com/search.naver?query=${encodeURIComponent(query+" 공식몰")}">공식몰 보기</a><a class="button" target="_blank" rel="noopener" href="https://www.coupang.com/np/search?q=${encodeURIComponent(query)}">쿠팡에서 보기</a></div></div>`}).join("");
+  const selectedGroupIds=ingredients.map(groupForIngredient).filter(Boolean).map((group)=>group.id);const actualProducts=adminProducts.filter((product)=>selectedGroupIds.includes(product.category)&&Number(product.stock)>0).slice(0,5);
+  document.querySelector("#recommendedProducts").innerHTML=actualProducts.length?actualProducts.map((product)=>`<article class="ingredient"><h3>${esc(product.name)}</h3><p><strong>${esc(product.brand)}</strong></p><p>${esc(product.ingredient)}</p><p class="muted">판매가 ${Number(product.salePrice||0).toLocaleString("ko-KR")}원 · 재고 ${Number(product.stock||0)}</p></article>`).join(""):'<p class="empty">관리자 제품DB에 재고가 있는 추천 제품이 아직 없습니다. 위 검색 버튼으로 성분을 비교할 수 있습니다.</p>';
+  document.querySelector("#healthType").innerHTML=`회원 건강유형: <strong>${esc(analysis.type)}</strong>`;
+  const box=unique(primary.flatMap((item)=>item.box)).slice(0,6);document.querySelector("#healthBox").innerHTML=box.map((item)=>`<div class="box-item">${esc(item)}</div>`).join("");
+  document.querySelector("#conditions").innerHTML=db.selectionConditionDB.map((item)=>`<li>${esc(item)}</li>`).join("");
+  const caution=/(임신|수유|복용|간질환|간수치|신장질환|고혈압|심장질환|항응고)/.test(analysis.findings.map((item)=>`${item.label} ${item.value}`).join(" "));
+  document.querySelector("#warning").innerHTML=caution?"<strong>구매 전 전문가 확인:</strong> 임신·약 복용·질환 관련 응답이 있어 의사 또는 약사 확인이 우선입니다.":"본 추천은 건강관리 제품 선택을 돕기 위한 참고 정보이며 진단이나 치료를 대신하지 않습니다.";
+</script>
+  <script src="site-navigation.js"></script>
+</body></html>

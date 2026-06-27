@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>홍채 후보 관찰 결과</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050711;
+      --panel: rgba(12, 17, 31, 0.94);
+      --line: rgba(76, 210, 200, 0.24);
+      --ink: #f7f4ec;
+      --muted: rgba(247, 244, 236, 0.68);
+      --accent: #3ad4c7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 18% 0%, rgba(58, 212, 199, 0.16), transparent 26%),
+        var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", "Noto Sans KR", Arial, sans-serif;
+    }
+
+    .page {
+      display: grid;
+      gap: 16px;
+      margin: 0 auto;
+      max-width: 900px;
+      padding: 24px;
+    }
+
+    header,
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+    }
+
+    header {
+      align-items: center;
+      display: flex;
+      gap: 16px;
+      justify-content: space-between;
+      padding: 18px 20px;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 28px;
+    }
+
+    h2 {
+      font-size: 20px;
+    }
+
+    .sub {
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    button,
+    a.button {
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      cursor: pointer;
+      display: inline-flex;
+      font: inherit;
+      font-weight: 800;
+      justify-content: center;
+      min-height: 40px;
+      padding: 0 14px;
+      text-decoration: none;
+    }
+
+    .primary {
+      background: linear-gradient(135deg, #35d7c6, #7040c9);
+      border: 0;
+    }
+
+    .result-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .card {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+    }
+
+    .reading-list {
+      color: var(--muted);
+      display: grid;
+      gap: 8px;
+      line-height: 1.5;
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .reading-list strong {
+      color: var(--ink);
+    }
+
+    .observation-rank {
+      border-top: 1px solid var(--line);
+      display: grid;
+      gap: 8px;
+      padding: 14px 0;
+    }
+
+    .observation-rank:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .observation-rank h3 {
+      color: var(--accent);
+      font-size: 17px;
+      margin: 0;
+    }
+
+    .observation-rank dl {
+      display: grid;
+      gap: 6px;
+      grid-template-columns: 76px 1fr;
+      margin: 0;
+    }
+
+    .observation-rank dt {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .observation-rank dd {
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    .eye-summary,
+    .collarette-note,
+    .notice {
+      background: rgba(58, 212, 199, 0.06);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      line-height: 1.65;
+      padding: 14px;
+    }
+
+    .eye-summary strong,
+    .collarette-note strong {
+      color: var(--accent);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .notice {
+      color: var(--muted);
+      font-size: 14px;
+      grid-column: 1 / -1;
+    }
+
+    .combined-card {
+      grid-column: 1 / -1;
+    }
+
+    .combined-result {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .combined-result > p {
+      margin: 0;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 18px 0;
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        padding: 10px;
+      }
+
+      header {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .actions,
+      .actions > * {
+        width: 100%;
+      }
+
+      .combined-result {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="site-navigation.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>홍채 후보 관찰 결과</h1>
+        <p id="createdAt" class="sub">판독 결과를 불러오는 중입니다.</p>
+      </div>
+      <div class="actions">
+        <a class="button" href="final-report.html">최종 판독</a>
+        <a class="button" href="index.html">메인 화면</a>
+        <button class="primary" type="button" onclick="window.print()">저장/인쇄</button>
+      </div>
+    </header>
+
+    <section class="result-grid">
+      <article class="card">
+        <h2>우안 관찰 결과</h2>
+        <div id="rightResults"></div>
+      </article>
+      <article class="card">
+        <h2>좌안 관찰 결과</h2>
+        <div id="leftResults"></div>
+      </article>
+      <article class="card combined-card">
+        <h2>좌우 홍채 후보 요약</h2>
+        <div class="combined-result">
+          <p id="combinedSummary" class="eye-summary"></p>
+          <p id="combinedCollarette" class="collarette-note"></p>
+        </div>
+      </article>
+      <p class="notice">홍채는 최종 부위를 단정하지 않고 상담 후보를 찾는 참고자료입니다. 최종 우선 부위는 라이프케어진단, 유니버스 병력 PDF, 현재 증상을 먼저 적용한 통합 판독에서 확인합니다.</p>
+    </section>
+  </main>
+
+  <script>
+    const raw = localStorage.getItem("irisReadingResult");
+    const data = raw ? JSON.parse(raw) : null;
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[character]);
+    }
+
+    function renderReadingList(results) {
+      if (!results || results.length === 0) {
+        return '<p class="empty">판독 결과가 없습니다.</p>';
+      }
+
+      return `
+        <div class="observation-list">
+          ${results.slice(0, 3).map((item, index) => `
+            <section class="observation-rank">
+              <h3>${index + 1}순위</h3>
+              <dl>
+                <dt>영역코드</dt><dd>${escapeHtml(item.code)}</dd>
+                <dt>부위</dt><dd>${escapeHtml(item.area)}</dd>
+                <dt>상담표현</dt><dd>${escapeHtml(item.consultation)}</dd>
+              </dl>
+            </section>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function combineEyeAreas(rightResults, leftResults) {
+      const grouped = new Map();
+      [["우안", rightResults], ["좌안", leftResults]].forEach(([eyeLabel, results]) => {
+        (results || []).forEach((item) => {
+          const key = item.area || item.code;
+          if (!grouped.has(key)) grouped.set(key, { area: key, points: 0, confidence: 0, eyes: new Set() });
+          const group = grouped.get(key);
+          group.points += Number(item.priorityScore) || 0;
+          group.confidence = Math.max(group.confidence, Number(item.score) || 0);
+          group.eyes.add(eyeLabel);
+        });
+      });
+
+      return [...grouped.values()]
+        .map((group) => ({ ...group, combinedScore: group.points + group.eyes.size * 2 + group.confidence / 100 }))
+        .sort((a, b) => b.combinedScore - a.combinedScore)
+        .slice(0, 3);
+    }
+
+    function buildCombinedSummary(rightResults, leftResults) {
+      const ranking = combineEyeAreas(rightResults, leftResults);
+      if (!ranking.length) return "좌우 홍채에서 종합할 우선 영역이 없습니다.";
+      if (ranking.length === 1) return `좌우 홍채를 함께 보면 ${ranking[0].area} 관련 영역이 가장 먼저 보입니다.`;
+      if (ranking.length === 2) return `좌우 홍채를 함께 보면 ${ranking[0].area} 관련 영역이 가장 먼저 보이고, 그다음 ${ranking[1].area} 관련 영역이 체크됩니다.`;
+      return `좌우 홍채를 함께 보면 ${ranking[0].area} 관련 영역이 가장 먼저 보이고, 그다음 ${ranking[1].area}, ${ranking[2].area} 관련 영역 순서로 체크됩니다. ${ranking[2].area} 관련 영역은 참고 수준으로 보입니다.`;
+    }
+
+    function buildCombinedCollarette(collarette) {
+      const observations = [
+        ["우안", collarette?.right],
+        ["좌안", collarette?.left]
+      ].filter(([, value]) => value && Number.isFinite(Number(value.radialPercent)));
+
+      if (!observations.length) return "좌우 홍채에서 꽃모양 영역을 안정적으로 확인하지 못했습니다.";
+
+      const average = Math.round(observations.reduce((sum, [, value]) => sum + Number(value.radialPercent), 0) / observations.length);
+      const size = average < 29 ? "작게" : average > 44 ? "넓게" : "보통 범위로";
+      const interpretation = average < 29
+        ? "전통 홍채학에서는 기본 체력과 소화력이 약한 쪽의 참고 신호로 봅니다."
+        : average > 44
+          ? "전통 홍채학에서는 기본 체력과 소화력이 안정적인 쪽의 참고 신호로 봅니다."
+          : "전통 홍채학에서는 기본 체력과 소화 상태가 보통 범위인 참고 신호로 봅니다.";
+      const detail = observations.map(([label, value]) => `${label} ${Math.round(Number(value.radialPercent))}%`).join(", ");
+      const values = observations.map(([, value]) => Number(value.radialPercent));
+      const differenceNote = values.length === 2 && Math.abs(values[0] - values[1]) >= 10
+        ? " 좌우 차이가 있어 촬영 각도와 조명 영향도 함께 확인합니다."
+        : "";
+
+      return `좌우 홍채를 함께 보면 동공 바깥 꽃모양 영역은 평균 ${average}%로 ${size} 관찰됩니다. (${detail}) ${interpretation}${differenceNote}`;
+    }
+
+    if (!data) {
+      document.querySelector("#createdAt").textContent = "저장된 판독 결과가 없습니다.";
+      document.querySelector("#rightResults").innerHTML = '<p class="empty">결과 없음</p>';
+      document.querySelector("#leftResults").innerHTML = '<p class="empty">결과 없음</p>';
+      document.querySelector("#combinedSummary").innerHTML = "<strong>홍채 후보 요약</strong>저장된 결과가 없습니다.";
+      document.querySelector("#combinedCollarette").innerHTML = "<strong>동공 바깥 꽃모양 영역</strong>저장된 결과가 없습니다.";
+    } else {
+      document.querySelector("#createdAt").textContent = `판독일시 ${new Date(data.createdAt).toLocaleString("ko-KR")}`;
+      document.querySelector("#rightResults").innerHTML = renderReadingList(data.right);
+      document.querySelector("#leftResults").innerHTML = renderReadingList(data.left);
+      document.querySelector("#combinedSummary").innerHTML = `<strong>홍채 후보 요약</strong>${escapeHtml(buildCombinedSummary(data.right, data.left))}`;
+      document.querySelector("#combinedCollarette").innerHTML = `<strong>동공 바깥 꽃모양 영역</strong>${escapeHtml(buildCombinedCollarette(data.collarette))}`;
+    }
+  </script>
+  <script src="site-navigation.js"></script>
+</body>
+</html>

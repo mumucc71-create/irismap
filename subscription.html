@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>구독하기 - IRIS MAPPING LAB</title>
+  <script>
+    if (new URLSearchParams(location.search).get("embedded") === "1") {
+      document.documentElement.classList.add("embedded-subscription");
+    }
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel: #0b1420;
+      --line: #24475b;
+      --text: #f5f7fa;
+      --muted: #9db0bd;
+      --cyan: #36d8d0;
+      --gold: #e7b74e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #07121b, #030609);
+      color: var(--text);
+      font-family: Arial, "Noto Sans KR", sans-serif;
+      letter-spacing: 0;
+    }
+    .page {
+      width: min(1180px, 100%);
+      margin: auto;
+      padding: 22px;
+    }
+    .card {
+      margin-top: 14px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(10, 19, 31, .95);
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      margin-bottom: 18px;
+      font-size: clamp(30px, 4vw, 44px);
+    }
+    h2 { margin-bottom: 14px; }
+    h3 { color: var(--gold); }
+    p { line-height: 1.65; }
+    .muted { color: var(--muted); }
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .plan {
+      display: grid;
+      gap: 18px;
+      min-height: 235px;
+      padding: 22px;
+      border: 1px solid #31556a;
+      border-radius: 8px;
+      background: rgba(7, 17, 27, .82);
+    }
+    .price {
+      color: var(--gold);
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #0b1522;
+      color: var(--text);
+      font: inherit;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .button.primary {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #061313;
+    }
+    .vip-card {
+      border-color: #8a6a28;
+      background: linear-gradient(135deg, rgba(111, 75, 17, .28), rgba(10, 19, 31, .97));
+    }
+    .vip-card h2 { color: #ffe39b; }
+    .benefit-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0;
+    }
+    .benefit-list span,
+    .status-pill {
+      padding: 8px 10px;
+      border: 1px solid #526273;
+      border-radius: 6px;
+      background: #09111c;
+    }
+    .status-pill {
+      color: var(--gold);
+      font-weight: 900;
+    }
+    .notice {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-left: 3px solid var(--gold);
+      background: #111018;
+      color: var(--muted);
+    }
+    html.embedded-subscription .iris-site-nav,
+    html.embedded-subscription .iris-mobile-tabs,
+    html.embedded-subscription .iris-mobile-menu,
+    html.embedded-subscription .iris-page-cta {
+      display: none !important;
+    }
+    html.embedded-subscription body {
+      padding-bottom: 0 !important;
+      background: transparent;
+    }
+    html.embedded-subscription .page {
+      width: 100%;
+      padding: 14px;
+    }
+    @media (max-width: 850px) {
+      .plans { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .page { padding: 12px; }
+      .plan { min-height: 0; }
+      .button { width: 100%; }
+    }
+  </style>
+  <link rel="stylesheet" href="site-navigation.css?v=20260623-fantasy-bg-1">
+</head>
+<body>
+  <main class="page">
+    <section class="card">
+      <h1>구독하기</h1>
+      <h2>구독 플랜</h2>
+      <div class="plans">
+        <article class="plan">
+          <h3>베이직</h3>
+          <p class="price">79,000원</p>
+          <p>홍채 비교 · 문진 · 리포트</p>
+          <button class="button plan-button" type="button" data-plan="베이직">이 플랜 기록</button>
+        </article>
+        <article class="plan">
+          <h3>스탠다드</h3>
+          <p class="price">129,000원</p>
+          <p>홍채 비교 · 문진 · 리포트 · 건강박스</p>
+          <button class="button primary plan-button" type="button" data-plan="스탠다드">이 플랜 기록</button>
+        </article>
+        <article class="plan">
+          <h3>프리미엄</h3>
+          <p class="price">199,000원</p>
+          <p>홍채 비교 · 문진 · 리포트 · 건강박스 · 건강도서 · 건강기기</p>
+          <button class="button plan-button" type="button" data-plan="프리미엄">이 플랜 기록</button>
+        </article>
+      </div>
+      <p id="saveStatus" class="muted"></p>
+    </section>
+
+    <section id="vip-benefit" class="card vip-card">
+      <h2>보험 VIP 혜택</h2>
+      <div id="vipStatus"></div>
+      <div id="vipBenefits" class="benefit-list"></div>
+      <div id="vipBoxStatus"></div>
+    </section>
+
+    <p class="notice">구독 기록은 현재 브라우저에 저장됩니다. 실제 결제나 주문은 발생하지 않습니다.</p>
+  </main>
+  <script src="care-engine.js"></script>
+  <script src="subscription.js?v=20260625-subscription-korean-1"></script>
+  <script src="site-navigation.js?v=20260624-nav-order-1"></script>
+</body>
+</html>

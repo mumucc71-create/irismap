@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>상품DB 관리 | IRIS MAPPING LAB</title>
+  <style>
+    :root { color-scheme:dark; --bg:#05090f; --panel:#0a1420; --line:#25495d; --text:#f5f7fa; --muted:#9db0bd; --cyan:#38d9d2; --gold:#e7b74e; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:linear-gradient(180deg,#07131c,#030609); color:var(--text); font-family:Arial,"Noto Sans KR",sans-serif; }
+    .page { width:min(1180px,100%); margin:auto; padding:24px; }
+    header { display:flex; justify-content:space-between; align-items:end; gap:16px; padding-bottom:20px; border-bottom:1px solid var(--line); }
+    .brand { color:var(--cyan); font-size:12px; font-weight:800; letter-spacing:.08em; }
+    h1 { margin:7px 0 0; }
+    .card { margin-top:15px; padding:21px; border:1px solid var(--line); border-radius:8px; background:var(--panel); }
+    .form-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    label { display:grid; align-content:start; gap:7px; color:#c7d4dc; font-weight:700; }
+    input,select,textarea { width:100%; padding:11px; border:1px solid #31566b; border-radius:6px; background:#07111b; color:var(--text); font:inherit; }
+    textarea { min-height:95px; resize:vertical; }
+    .wide { grid-column:1/-1; }
+    .span2 { grid-column:span 2; }
+    .check { display:flex; align-items:center; gap:9px; min-height:44px; }
+    .check input { width:auto; }
+    .button,button { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 15px; border:1px solid var(--line); border-radius:6px; background:#0b1724; color:var(--text); font-weight:800; text-decoration:none; cursor:pointer; }
+    .primary { border-color:var(--cyan); background:var(--cyan); color:#061414; }
+    .preview { width:180px; aspect-ratio:4/3; object-fit:cover; border:1px solid var(--line); border-radius:7px; background:#020508; }
+    .preview[hidden] { display:none; }
+    .muted { color:var(--muted); }
+    .table-wrap { overflow:auto; }
+    table { width:100%; border-collapse:collapse; min-width:850px; }
+    th,td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; }
+    th { color:var(--gold); }
+    .thumb { width:72px; height:54px; object-fit:cover; border-radius:5px; background:#020508; }
+    .status-visible { color:var(--cyan); }
+    .status-hidden { color:var(--muted); }
+    .saved-reasons { display:grid; gap:8px; margin-top:12px; }
+    .saved-reason { display:flex; justify-content:space-between; gap:12px; padding:10px; border:1px solid var(--line); border-radius:6px; }
+    @media(max-width:800px) { .form-grid { grid-template-columns:1fr; } .wide,.span2 { grid-column:auto; } header { align-items:stretch; flex-direction:column; } .page { padding:13px; } }
+  </style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <div><div class="brand">IRIS MAPPING LAB</div><h1>자체 상품DB 관리</h1></div>
+    <div><a class="button" href="admin.html">운영자 홈</a> <a class="button" href="shopping.html">쇼핑 화면</a> <a class="button" href="index.html">메인</a></div>
+  </header>
+
+  <section class="card">
+    <h2>쇼핑몰 표시 설정</h2>
+    <form id="displaySettingsForm" class="form-grid">
+      <label>성분명<input name="ingredientName" placeholder="예: 마그네슘"></label>
+      <label class="span2">성분 추천 이유<textarea name="ingredientReason" placeholder="회원 화면에서 해당 성분 옆에 표시할 문구"></textarea></label>
+      <label>홍채촬영도구 상품명<input name="cameraName" value="홍채촬영도구"></label>
+      <label>홍채촬영도구 가격<input name="cameraPrice" type="number" min="0" value="120000"></label>
+      <label>홍채촬영도구 구매 링크<input name="cameraUrl" type="url"></label>
+      <label class="wide">홍채촬영도구 설명<input name="cameraDescription" value="홍채 사진 촬영용 도구입니다."></label>
+      <div class="wide"><button class="primary" type="submit">표시 설정 저장</button></div>
+    </form>
+    <div id="savedIngredientReasons" class="saved-reasons"></div>
+    <p id="settingsStatus" class="muted" role="status"></p>
+  </section>
+
+  <section class="card">
+    <h2 id="productFormTitle">상품 등록</h2>
+    <p class="muted">운영자가 직접 선별한 상품만 등록합니다. 상품 사진이 없으면 회원 화면에 노출되지 않습니다.</p>
+    <form id="productForm" class="form-grid">
+      <input name="productId" type="hidden">
+      <label>상품명 *<input name="name" required></label>
+      <label>브랜드 *<input name="brand" required></label>
+      <label>카테고리 *<select name="category" required></select></label>
+      <label>쇼핑 구분 *<select name="displayGroup" required><option value="basic">기본 필수</option><option value="personal" selected>개인별 필수</option><option value="preference">기호식품</option></select></label>
+
+      <label>추천 성분 *<input name="recommendedIngredients" required placeholder="예: 비타민B군, 마그네슘"></label>
+      <label>우선순위<input name="priority" type="number" min="0" value="100"></label>
+      <label class="span2">추천 대상 증상·키워드 *<textarea name="targetKeywords" required placeholder="쉼표 또는 줄바꿈으로 구분: 피로, 수면부족, 간 관리"></textarea></label>
+      <label>추천 검색어<textarea name="searchKeywords" placeholder="예: 활성형 비타민B군&#10;고함량 비타민B 컴플렉스"></textarea></label>
+      <label class="span2">상품 설명<textarea name="description"></textarea></label>
+      <label>추천 이유<textarea name="reason" placeholder="왜 이 상품을 비교 후보로 선별했는지"></textarea></label>
+
+      <label>상품 사진 업로드 *<input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
+      <label class="span2">상품 이미지 URL<input id="imageUrl" name="imageUrl" type="url" placeholder="업로드 대신 공개 이미지 URL 사용 가능"></label>
+      <div><img id="imagePreview" class="preview" alt="상품 이미지 미리보기" hidden></div>
+
+      <label>구매 링크<input name="purchaseUrl" type="url"></label>
+      <label>공식몰 링크<input name="officialUrl" type="url"></label>
+      <label>네이버 검색 링크<input name="naverSearchUrl" type="url" placeholder="비워두면 추천 검색어로 자동 생성"></label>
+
+      <label>도매가<input name="wholesalePrice" type="number" min="0" step="1"></label>
+      <label>판매가<input name="salePrice" type="number" min="0" step="1"></label>
+      <label>재고<input name="stock" type="number" min="0" step="1" value="0"></label>
+      <label class="check"><input name="visible" type="checkbox" checked> 회원 화면에 노출</label>
+      <div class="wide"><button id="productSaveButton" class="primary" type="submit">상품 저장</button> <button id="productCancelButton" type="button" hidden>수정 취소</button></div>
+    </form>
+    <p id="status" class="muted" role="status"></p>
+  </section>
+
+  <section class="card">
+    <h2>등록 상품</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>사진</th><th>상품</th><th>쇼핑 구분</th><th>카테고리</th><th>추천 대상</th><th>판매가</th><th>재고</th><th>노출</th><th>우선순위</th><th></th></tr></thead>
+      <tbody id="productRows"></tbody>
+    </table></div>
+  </section>
+</main>
+<script src="shopping-recommendation-db.js"></script>
+<script src="product-admin.js"></script>
+</body>
+</html>

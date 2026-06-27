@@ -1,0 +1,75 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>유니버스 신체 위험도 종합 리포트</title>
+  <script>if(new URLSearchParams(location.search).get("embedded")==="1")document.documentElement.classList.add("embedded-universe");</script>
+  <style>
+    :root{color-scheme:dark;--bg:#03070c;--panel:#09131d;--panel2:#0d1925;--line:#24495b;--cyan:#43ded6;--gold:#e8bd5d;--text:#f4f7f8;--muted:#9eb0bc;--low:#4da6ff;--normal:#9bd663;--high:#ef9d45;--very:#9b6ad8}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#102330 0,#050b11 42%,#020408 100%);color:var(--text);font-family:Arial,"Noto Sans KR",sans-serif;letter-spacing:0}.page{width:min(1500px,100%);margin:auto;padding:20px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 0;border-bottom:1px solid var(--line)}.brand{color:var(--cyan);font-size:13px;font-weight:800}.topbar h1{margin:7px 0 0;font-size:clamp(25px,3.6vw,42px)}.subtitle{margin:7px 0 0;color:var(--muted);line-height:1.55}.actions{display:flex;gap:8px;flex-wrap:wrap}.button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 15px;border:1px solid var(--line);border-radius:7px;background:#0c1823;color:var(--text);font-weight:800;text-decoration:none;cursor:pointer}.button.primary{background:var(--cyan);border-color:var(--cyan);color:#041311}.button.gold{border-color:#8a6a28;color:#ffe39b}.card{margin-top:14px;padding:20px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(145deg,rgba(13,25,37,.97),rgba(5,11,17,.97));box-shadow:0 14px 36px rgba(0,0,0,.18)}.locked{max-width:760px;margin:70px auto;padding:38px;text-align:center}.locked h2{font-size:28px}.locked p{color:var(--muted);line-height:1.75}.vip-benefit{border-color:#8a6a28;background:linear-gradient(135deg,rgba(112,74,16,.3),rgba(7,20,28,.97))}.vip-benefit h2{color:#ffe39b}.vip-benefit p{line-height:1.7}.upload-card{display:grid;grid-template-columns:1fr auto;align-items:center;gap:20px}.upload-card h2{margin:0 0 8px}.upload-card p{margin:0;color:var(--muted);line-height:1.6}.file-control{position:relative;overflow:hidden}.file-control input{position:absolute;inset:0;opacity:0;cursor:pointer}.status{margin-top:12px;min-height:24px;color:var(--cyan);font-weight:700}.report-head{display:flex;justify-content:space-between;align-items:flex-end;gap:15px}.report-head h2{margin:0}.meta{color:var(--muted);line-height:1.7}.layout{display:grid;grid-template-columns:minmax(240px,.75fr) minmax(460px,1.5fr) minmax(260px,.85fr);gap:14px;align-items:start}.stack{display:grid;gap:14px}.stack .card{margin:0}.card h2{margin:0 0 14px;font-size:20px}.summary-list,.top-list,.priority-list{display:grid;gap:8px}.summary-item,.top-item,.priority-item{padding:12px;border:1px solid #243e50;border-radius:7px;background:#08121c}.summary-item strong,.top-item strong{display:block;color:var(--gold);margin-bottom:5px}.body-card{margin:0;min-width:0}.body-stage{position:relative;aspect-ratio:3/2;overflow:hidden;border:1px solid #24495b;border-radius:8px;background:#020812}.body-stage img{display:block;width:100%;height:100%;object-fit:cover}.body-label{position:absolute;min-width:78px;transform:translate(-50%,-50%);padding:5px 7px;border:1px solid currentColor;border-radius:6px;background:rgba(3,8,14,.92);font-size:11px;font-weight:800;white-space:nowrap;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.32)}.body-label.low{color:var(--low)}.body-label.normal{color:var(--normal)}.body-label.high{color:var(--high)}.body-label.very{color:var(--very)}.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:13px}.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.risk-row{display:grid;grid-template-columns:110px 1fr 72px;gap:9px;align-items:center;margin:11px 0}.track{height:9px;border-radius:999px;background:#14232d;overflow:hidden}.fill{height:100%;border-radius:inherit}.fill.low{background:var(--low)}.fill.normal{background:var(--normal)}.fill.high{background:var(--high)}.fill.very{background:var(--very)}.risk-value{text-align:right;font-weight:800}.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.evidence{padding:14px;border:1px solid #243e50;border-radius:7px;background:#07111a}.evidence h3{margin:0 0 8px;color:var(--gold);font-size:16px}.evidence p{margin:5px 0;color:var(--muted);line-height:1.55}.notice{border-left:3px solid var(--gold);padding:15px 17px;background:#111018;color:#d8d9dc;line-height:1.7}.history-table{width:100%;border-collapse:collapse}.history-table th,.history-table td{padding:10px;border-bottom:1px solid #243e50;text-align:left}.history-table th{color:var(--gold)}.empty{color:var(--muted)}[hidden]{display:none!important}
+    .body-label strong,.body-label small{display:block}.body-label small{margin-top:3px;font-size:10px;font-weight:700;color:currentColor}.member-first-intro{margin:14px 0;padding:16px 18px;border-left:3px solid var(--gold);background:#111018;line-height:1.75}
+    html.embedded-universe .iris-site-nav,html.embedded-universe .iris-mobile-tabs,html.embedded-universe .iris-mobile-menu,html.embedded-universe .iris-page-cta,html.embedded-universe .topbar,html.embedded-universe .notice{display:none!important}html.embedded-universe .page{width:100%;max-width:none;padding:0 14px 18px}html.embedded-universe .card:first-child{margin-top:0}
+    .body-dots{position:absolute;inset:0;pointer-events:none}
+    .body-dot{position:absolute;width:13px;height:13px;transform:translate(-50%,-50%);border:2px solid rgba(244,247,248,.94);border-radius:50%;background:currentColor;box-shadow:0 0 0 5px rgba(67,222,214,.13),0 0 18px currentColor}
+    @media(max-width:1080px){.layout{grid-template-columns:1fr 1.45fr}.layout>.stack:last-child{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr))}.body-label{font-size:10px}}
+    @media(max-width:760px){.page{padding:12px}.topbar,.report-head,.upload-card{align-items:stretch;flex-direction:column}.topbar{display:flex}.actions,.actions>*{width:100%}.upload-card{display:flex}.layout{grid-template-columns:1fr}.layout>.stack:last-child{grid-column:auto;grid-template-columns:1fr}.body-stage{aspect-ratio:auto;min-height:470px}.body-stage img{height:360px;object-fit:cover}.body-label{position:static;display:inline-block;transform:none;margin:4px}.body-labels{position:absolute;left:8px;right:8px;bottom:8px;max-height:116px;overflow:auto;padding:6px;background:rgba(2,8,14,.92);border-radius:7px}.detail-grid{grid-template-columns:1fr}.risk-row{grid-template-columns:88px 1fr 66px}.history-wrap{overflow:auto}}
+  </style>
+  <link rel="stylesheet" href="site-navigation.css?v=20260623-fantasy-bg-1">
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div><h1>유니버스 신체 위험도 종합 리포트</h1><p class="subtitle">과거 병 이력, 현재 문진, 생활습관, 홍채 관찰 결과를 종합하는 보험 VIP 리포트입니다.</p></div>
+      <nav class="actions"><a class="button" href="shopping.html">쇼핑하기</a><a class="button" href="subscription.html">구독하기</a><a class="button" href="index.html">메인 화면</a></nav>
+    </header>
+
+    <section id="lockedView" class="card locked" hidden>
+      <h2>로그인이 필요합니다.</h2>
+      <p>로그인 후 유니버스 병력분석 PDF를 업로드하면 보험 VIP 혜택이 활성화됩니다.</p>
+      <a class="button primary" href="iris.html">로그인 화면으로 이동</a>
+    </section>
+
+    <div id="subscriberView" hidden>
+      <section id="vipBenefitNotice" class="card vip-benefit" hidden>
+        <h2>VIP 활성화 완료</h2>
+        <p>축하합니다. 회원님께 건강박스 1회 무료 제공 혜택이 지급되었습니다.</p>
+        <a class="button gold" href="subscription.html#vip-benefit">건강박스 확인</a>
+      </section>
+      <section class="card upload-card">
+        <div><h2>유니버스 병력분석 PDF 업로드</h2><p>유니버스 병력분석 리포트를 업로드하면 과거 병 이력, 투약 이력, 검사 이력, 현재 홍채 결과를 종합하여 신체 위험도 리포트를 생성합니다.</p><p class="meta">PDF는 이 브라우저 안에서만 분석되며 원본 파일 자체는 저장하지 않습니다.</p></div>
+        <label class="button primary file-control">PDF 선택<input id="pdfInput" type="file" accept="application/pdf,.pdf"></label>
+      </section>
+      <p id="analysisStatus" class="status" role="status"></p>
+
+      <section id="report" hidden>
+        <div class="card report-head"><div><h2>PDF 분석 완료</h2><div id="memberMeta" class="meta"></div></div><button id="saveReportButton" class="button gold" type="button">분석 결과 저장</button></div>
+        <p class="member-first-intro">회원님의 문진, 생활습관, 과거 병력 정보를 종합 분석한 결과 현재 우선적으로 관리가 필요한 영역이 확인되었습니다. 홍채에서도 관련 신호가 함께 관찰되어 종합 결과에 반영하였습니다.</p>
+        <div class="layout">
+          <div class="stack">
+            <section class="card"><h2>회원 기본 정보</h2><div id="memberInfo" class="summary-list"></div></section>
+            <section class="card"><h2>PDF 병력 요약</h2><div id="historySummary" class="summary-list"></div></section>
+            <section class="card"><h2>현재 문진·생활습관</h2><div id="healthSummary" class="summary-list"></div></section>
+          </div>
+
+          <section class="card body-card"><h2>부위별 관리 우선도</h2><div class="body-stage"><img src="assets/universe-body-map.png" alt="인체 정면 및 후면 건강관리 지도"><div id="bodyDots" class="body-dots"></div><div id="bodyLabels" class="body-labels"></div></div><div class="legend"><span><i style="background:var(--very)"></i>매우 높음</span><span><i style="background:var(--high)"></i>높음</span><span><i style="background:var(--normal)"></i>보통</span><span><i style="background:var(--low)"></i>낮음</span></div><div id="riskBars"></div></section>
+
+          <div class="stack">
+            <section class="card"><h2>전체 관리 우선도 요약</h2><div id="overallSummary"></div></section>
+            <section class="card"><h2>관리 우선순위</h2><div id="priorities" class="priority-list"></div></section>
+            <section class="card"><h2>연결 추천</h2><div id="linkedCare"></div><div class="actions"><a class="button" href="shopping.html">추천 성분 보기</a><a class="button" href="subscription.html">건강박스 보기</a></div></section>
+          </div>
+        </div>
+        <section class="card"><h2>근거별 상세 정보</h2><div id="evidenceGrid" class="detail-grid"></div></section>
+        <section class="card"><h2>4개월 변화 비교</h2><div id="changeSummary"></div><div class="history-wrap"><table class="history-table"><thead><tr><th>회차</th><th>업로드일</th><th>TOP 3</th><th>변화</th></tr></thead><tbody id="historyRows"></tbody></table></div></section>
+      </section>
+    </div>
+
+    <p class="notice">본 리포트는 업로드된 병력분석 PDF, 홍채 관찰, 문진 정보를 바탕으로 한 건강관리 참고 자료입니다. 질환을 판정하거나 미래 상태를 확정하지 않습니다. 증상이 있거나 걱정되는 부위는 반드시 의료진 상담과 검진을 받으시기 바랍니다.</p>
+  </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="care-engine.js"></script>
+  <script src="universe.js"></script>
+  <script src="site-navigation.js?v=20260624-no-embedded-tabs-1"></script>
+</body>
+</html>
