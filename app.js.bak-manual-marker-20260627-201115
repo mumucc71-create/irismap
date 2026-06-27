@@ -1801,8 +1801,8 @@ function drawEyePanel(eyeKey, offsetX, offsetY = 0) {
     drawCircularAlignmentGuide();
   } else if (state.map && state.overlayVisible) {
     drawIrisOverlay(eye, eyeKey);
+    drawMarkers(eye);
   }
-  drawMarkers(eye);
   ctx.restore();
 }
 
@@ -1973,12 +1973,17 @@ function drawMarkers(eye = currentEye()) {
   ctx.save();
   eye.markers.forEach((marker, index) => {
     ctx.beginPath();
-    ctx.arc(marker.x, marker.y, marker.id === state.selectedObservationId ? 7 : 5, 0, Math.PI * 2);
-    ctx.fillStyle = marker.id === state.selectedObservationId ? "rgba(215,174,74,0.98)" : "rgba(55,214,205,0.96)";
+    ctx.arc(marker.x, marker.y, 13, 0, Math.PI * 2);
+    ctx.fillStyle = marker.id === state.selectedObservationId ? "rgba(215,174,74,0.98)" : "rgba(10,14,24,0.92)";
     ctx.fill();
     ctx.lineWidth = marker.id === state.selectedObservationId ? 3 : 2;
-    ctx.strokeStyle = marker.id === state.selectedObservationId ? "#fff2b8" : "rgba(0,0,0,0.72)";
+    ctx.strokeStyle = marker.id === state.selectedObservationId ? "#fff2b8" : "rgba(215,174,74,0.92)";
     ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 13px Segoe UI, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(toCircledNumber(index + 1), marker.x, marker.y);
   });
   ctx.restore();
 }

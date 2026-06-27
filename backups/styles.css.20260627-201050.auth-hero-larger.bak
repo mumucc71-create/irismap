@@ -713,10 +713,10 @@ h2 {
   min-width: 0;
   width: 100%;
   touch-action: none;
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M3 2 L20 11 L11 14 L8 22 Z' fill='%23f3c85a' stroke='%23040a10' stroke-width='1.5'/%3E%3C/svg%3E") 4 4, crosshair;
+  cursor: grab;
 }
 
-#irisCanvas.is-aligning { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M3 2 L20 11 L11 14 L8 22 Z' fill='%23f3c85a' stroke='%23040a10' stroke-width='1.5'/%3E%3C/svg%3E") 4 4, crosshair; }
+#irisCanvas.is-aligning { cursor: grabbing; }
 
 .alignment-guide-copy {
   color: var(--muted);
@@ -1698,11 +1698,11 @@ body:has(#authScreen:not([hidden])) {
 .auth-hero {
   background:
     linear-gradient(180deg, rgba(3, 4, 10, 0.04), rgba(3, 4, 10, 0.2)),
-    url("assets/login-iris-main.jpg") center 30% / cover no-repeat;
+    url("assets/login-iris-main.jpg") center center / contain no-repeat;
   border-radius: 6px;
-  height: 470px;
-  margin: -4px auto 0;
-  max-width: 360px;
+  height: 430px;
+  margin: -6px auto -2px;
+  max-width: 330px;
   width: 100%;
 }
 
@@ -1823,7 +1823,7 @@ body:has(#authScreen:not([hidden])) {
   }
 
   .auth-hero {
-    height: 370px;
+    height: 330px;
     margin-left: -4px;
     margin-right: -4px;
   }
