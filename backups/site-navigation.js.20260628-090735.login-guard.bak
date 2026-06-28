@@ -43,10 +43,6 @@
     return Boolean(String(localStorage.getItem(SESSION_KEY) || "").replace(/\D/g, ""));
   }
 
-  function requiresLogin(file) {
-    return !["index.html", "iris.html", "admin.html", ""].includes(file);
-  }
-
   function routeLink(key, activeKey, guest) {
     const route = ROUTES[key];
     const label = guest && route.guestLabel ? route.guestLabel : route.label;
@@ -77,7 +73,7 @@
     const logout = document.querySelector("#irisCommonLogout");
     if (logout) logout.addEventListener("click", () => {
       localStorage.removeItem(SESSION_KEY);
-      location.href = "iris.html";
+      location.href = "index.html";
     });
   }
 
@@ -141,10 +137,6 @@
     const file = currentFile();
     const activeKey = PAGE_KEYS[file] || "";
     const isLoggedIn = loggedIn();
-    if (!isLoggedIn && requiresLogin(file)) {
-      location.href = "iris.html";
-      return;
-    }
     prepareAnchors(file);
     buildHeader(file, activeKey, isLoggedIn);
     hideLegacyHomeLinks();

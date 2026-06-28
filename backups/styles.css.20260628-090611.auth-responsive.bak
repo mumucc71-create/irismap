@@ -1612,7 +1612,7 @@ body:has(#authScreen:not([hidden])) {
   justify-content: center;
   min-height: 100vh;
   overflow: auto;
-  padding: clamp(8px, 2vw, 22px);
+  padding: 10px;
 }
 
 .auth-card {
@@ -1621,14 +1621,13 @@ body:has(#authScreen:not([hidden])) {
     url("assets/login-iris-main.jpg") center 34% / cover no-repeat,
     #050711;
   border: 1px solid rgba(192, 164, 91, 0.22);
-  border-radius: 12px;
+  border-radius: 6px;
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.7);
   gap: 20px;
-  width: min(860px, 100%);
-  max-width: calc(100vw - clamp(16px, 4vw, 44px));
-  min-height: min(1180px, calc(100vh - clamp(16px, 4vw, 44px)));
+  max-width: 520px;
+  min-height: calc(100vh - 20px);
   overflow: hidden;
-  padding: clamp(20px, 3vw, 34px) clamp(18px, 4vw, 44px) clamp(28px, 4vw, 48px);
+  padding: 26px 34px 36px;
   position: relative;
 }
 
@@ -1661,9 +1660,9 @@ body:has(#authScreen:not([hidden])) {
   display: flex;
   gap: 12px;
   justify-content: space-between;
-  margin: calc(clamp(20px, 3vw, 34px) * -1) calc(clamp(18px, 4vw, 44px) * -1) clamp(18px, 3vw, 30px);
-  min-height: clamp(64px, 8vw, 92px);
-  padding: clamp(12px, 2vw, 20px) clamp(16px, 3vw, 28px);
+  margin: -26px -34px 22px;
+  min-height: 76px;
+  padding: 16px 22px;
   border-bottom: 1px solid rgba(192, 164, 91, 0.18);
   background: rgba(3, 7, 13, 0.72);
   backdrop-filter: blur(8px);
@@ -1691,14 +1690,14 @@ body:has(#authScreen:not([hidden])) {
 .auth-title h1 {
   color: #fff7e8;
   font-family: Georgia, "Noto Serif KR", serif;
-  font-size: clamp(34px, 6vw, 58px);
+  font-size: 34px;
   font-weight: 500;
   line-height: 1.25;
 }
 
 .auth-title p {
   color: rgba(248, 244, 234, 0.68);
-  font-size: clamp(14px, 2.3vw, 22px);
+  font-size: 14px;
   margin: 10px 0 0;
 }
 
@@ -1711,7 +1710,7 @@ body:has(#authScreen:not([hidden])) {
   font-family: Georgia, "Noto Serif KR", serif;
   font-size: 15px;
   line-height: 1.8;
-  margin: clamp(330px, 52vw, 560px) 0 clamp(6px, 1.5vw, 16px);
+  margin: 360px 0 4px;
   text-align: center;
 }
 
@@ -1722,8 +1721,6 @@ body:has(#authScreen:not([hidden])) {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.38);
   display: grid;
   gap: 14px;
-  width: min(680px, 100%);
-  margin-inline: auto;
   padding: 22px;
   backdrop-filter: blur(10px);
 }
@@ -1809,34 +1806,21 @@ body:has(#authScreen:not([hidden])) {
   font-size: 12px;
 }
 
-@media (max-width: 760px) {
-  .auth-card {
-    width: min(620px, 100%);
-    background-position: center 24%;
-    background-size: auto 72%;
-  }
-
-  .auth-quote {
-    margin-top: clamp(320px, 76vw, 500px);
-  }
-}
-
 @media (max-width: 480px) {
   .auth-screen {
-    padding: 6px;
+    padding: 4px;
   }
 
   .auth-card {
-    border-radius: 10px;
-    max-width: calc(100vw - 12px);
-    min-height: calc(100vh - 12px);
-    padding: 18px 18px 28px;
-    background-position: center 24%;
-    background-size: auto 72%;
+    border-radius: 4px;
+    max-width: none;
+    min-height: calc(100vh - 8px);
+    padding: 22px 18px 30px;
+    background-position: center 28%;
   }
 
   .auth-title h1 {
-    font-size: clamp(30px, 10vw, 42px);
+    font-size: 30px;
   }
 
   .auth-hero {
@@ -1845,12 +1829,12 @@ body:has(#authScreen:not([hidden])) {
   }
 
   .auth-brand {
-    margin: -18px -18px 20px;
+    margin: -22px -18px 22px;
     padding: 14px 16px;
   }
 
   .auth-quote {
-    margin-top: clamp(310px, 82vw, 430px);
+    margin-top: 330px;
   }
 
   .auth-panel {
