@@ -39,7 +39,9 @@
     .price { color:var(--gold); font-size:25px; font-weight:850; white-space:nowrap; }
     .consult-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:11px; }
     label { display:grid; gap:6px; color:#c9d6dd; font-weight:700; }
-    input { width:100%; min-height:44px; padding:10px; border:1px solid #31566b; border-radius:6px; background:#07111b; color:var(--text); font:inherit; }
+    input, textarea { width:100%; min-height:44px; padding:10px; border:1px solid #31566b; border-radius:6px; background:#07111b; color:var(--text); font:inherit; }
+    textarea { min-height:108px; resize:vertical; }
+    .consult-grid .wide { grid-column:1/-1; }
     .button { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:0 15px; border:1px solid var(--cyan); border-radius:6px; background:var(--cyan); color:#061414; font-weight:850; text-decoration:none; cursor:pointer; }
     .consult-actions { margin-top:12px; }
     .status { margin:10px 0 0; color:var(--cyan); }
@@ -82,7 +84,8 @@
       <div class="consult-grid">
         <label>이름<input name="name" required autocomplete="name"></label>
         <label>연락처<input name="phone" required autocomplete="tel" inputmode="tel"></label>
-        <label>상담 가능 시간<input name="availableTime" required placeholder="예: 평일 오후 2~5시"></label>
+        <label>이메일<input name="email" type="email" autocomplete="email" placeholder="이메일"></label>
+        <label class="wide">문의내용<textarea name="memo" required placeholder="문의하실 내용을 적어주세요"></textarea></label>
       </div>
       <div class="consult-actions"><button class="button" type="submit">상담 요청 올리기</button></div>
     </form>
@@ -97,7 +100,8 @@
   const productDb = window.ProductDB;
   const products = productDb?.read?.() || [];
   const operatorSettings = readJson("irisShoppingOperatorSettings", { ingredientReasons:{}, camera:{} });
-  const consultScriptUrl = localStorage.getItem("irisConsultGoogleScriptUrl") || "";
+  const CONSULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSNHb7KjCL6lqu08bCzqFQjeN2B17xj46nQT3LMCZuvUmqiIQZsa8uQswbrJZDzK0/exec";
+  const consultScriptUrl = localStorage.getItem("irisConsultGoogleScriptUrl") || CONSULT_SCRIPT_URL;
   const primary = Array.isArray(analysis.primary) ? analysis.primary : [];
   const goalOptions = [];
   primary.forEach((item) => {
@@ -171,33 +175,46 @@
     return (source.title || '현재 관리 목적') + '과 관련해 우선 비교하는 성분입니다.';
   }
 
-  document.querySelector("#consultForm").addEventListener("submit", (event) => {
+  document.querySelector("#consultForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget).entries());
     const requests = readJson("irisShoppingConsultRequests", []);
     requests.push({ id:"C" + Date.now(), category:"상담요청", ...data, status:"접수", createdAt:new Date().toISOString() });
     localStorage.setItem("irisShoppingConsultRequests", JSON.stringify(requests));
-    event.currentTarget.reset();
-    document.querySelector("#consultStatus").textContent = consultScriptUrl
-      ? "상담요청이 등록되었습니다. 관리자에게 자동 전송했습니다."
-      : "상담요청이 등록되었습니다.";
-    sendConsultRequest(data);
+    const sent = await sendConsultRequest(data);
+    if (sent) {
+      event.currentTarget.reset();
+      document.querySelector("#consultStatus").textContent = "접수되었습니다.";
+    } else {
+      document.querySelector("#consultStatus").textContent = "전송에 실패했습니다.";
+    }
   });
 
-  function sendConsultRequest(data) {
-    if (!consultScriptUrl) return;
-    const payload = new FormData();
-    payload.append("source", "consult");
-    payload.append("name", data.name || "");
-    payload.append("phone", data.phone || "");
-    payload.append("availableTime", data.availableTime || "");
-    payload.append("createdAt", new Date().toISOString());
-    payload.append("page", location.href);
-    fetch(consultScriptUrl, { method:"POST", mode:"no-cors", body:payload }).catch(() => {
+  async function sendConsultRequest(data) {
+    if (!consultScriptUrl) return false;
+    const payload = {
+      type: "상담",
+      name: data.name || "",
+      phone: data.phone || "",
+      email: data.email || "",
+      message: data.memo || "",
+      page: location.href,
+      createdAt: new Date().toISOString()
+    };
+    try {
+      const response = await fetch(consultScriptUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json().catch(() => ({}));
+      return response.ok && result.success !== false;
+    } catch (_) {
       const failed = readJson("irisShoppingConsultFailedQueue", []);
       failed.push({ ...data, createdAt:new Date().toISOString() });
       localStorage.setItem("irisShoppingConsultFailedQueue", JSON.stringify(failed));
-    });
+      return false;
+    }
   }
 
   document.addEventListener("click", (event) => {
@@ -250,6 +267,7 @@
   function unique(values){ return [...new Set((values||[]).map((value)=>String(value||"").trim()).filter(Boolean))]; }
   function escapeHtml(value){ return String(value??"").replace(/[&<>"']/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
 </script>
-<script src="site-navigation.js?v=20260624-nav-order-1"></script>
+<script src="site-navigation.js?v=20260628-login-return-1"></script>
 </body>
 </html>
+

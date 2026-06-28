@@ -1606,44 +1606,33 @@ body:has(#authScreen:not([hidden])) {
 .auth-screen {
   align-items: flex-start;
   background:
-    radial-gradient(circle at 50% 28%, rgba(30, 211, 205, 0.16), transparent 22%),
-    linear-gradient(180deg, #03040a 0%, #060913 52%, #020307 100%);
+    linear-gradient(90deg, rgba(1, 4, 8, 0.92) 0%, rgba(1, 4, 8, 0.68) 48%, rgba(1, 4, 8, 0.28) 100%),
+    url("assets/login-iris-main.jpg") center top / cover no-repeat;
   color: #f8f4ea;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 100vh;
   overflow: auto;
-  padding: clamp(8px, 2vw, 22px);
+  padding: 0;
 }
 
 .auth-card {
-  background:
-    linear-gradient(180deg, rgba(5, 8, 18, 0.18) 0%, rgba(3, 4, 9, 0.24) 44%, rgba(3, 4, 9, 0.92) 72%),
-    url("assets/login-iris-main.jpg") center 34% / cover no-repeat,
-    #050711;
-  border: 1px solid rgba(192, 164, 91, 0.22);
-  border-radius: 12px;
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.7);
-  gap: 20px;
-  width: min(860px, 100%);
-  max-width: calc(100vw - clamp(16px, 4vw, 44px));
-  min-height: min(1180px, calc(100vh - clamp(16px, 4vw, 44px)));
-  overflow: hidden;
-  padding: clamp(20px, 3vw, 34px) clamp(18px, 4vw, 44px) clamp(28px, 4vw, 48px);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: grid;
+  gap: 22px;
+  width: min(760px, 100%);
+  max-width: none;
+  min-height: calc(100vh - 68px);
+  overflow: visible;
+  padding: clamp(70px, 11vh, 140px) clamp(22px, 8vw, 130px) clamp(56px, 8vh, 96px);
   position: relative;
 }
 
 .auth-card::before,
 .auth-card::after {
-  border: 1px solid rgba(255, 210, 126, 0.12);
-  content: "";
-  inset: 8px;
-  pointer-events: none;
-  position: absolute;
-}
-
-.auth-card::after {
-  inset: 14px;
-  border-color: rgba(92, 225, 214, 0.08);
+  content: none;
 }
 
 .auth-brand,
@@ -1660,13 +1649,7 @@ body:has(#authScreen:not([hidden])) {
   align-items: center;
   display: flex;
   gap: 12px;
-  justify-content: space-between;
-  margin: calc(clamp(20px, 3vw, 34px) * -1) calc(clamp(18px, 4vw, 44px) * -1) clamp(18px, 3vw, 30px);
-  min-height: clamp(64px, 8vw, 92px);
-  padding: clamp(12px, 2vw, 20px) clamp(16px, 3vw, 28px);
-  border-bottom: 1px solid rgba(192, 164, 91, 0.18);
-  background: rgba(3, 7, 13, 0.72);
-  backdrop-filter: blur(8px);
+  display: none;
 }
 
 .auth-logo {
@@ -1685,20 +1668,20 @@ body:has(#authScreen:not([hidden])) {
 }
 
 .auth-title {
-  text-align: center;
+  text-align: left;
 }
 
 .auth-title h1 {
   color: #fff7e8;
   font-family: Georgia, "Noto Serif KR", serif;
-  font-size: clamp(34px, 6vw, 58px);
+  font-size: clamp(38px, 6.2vw, 78px);
   font-weight: 500;
-  line-height: 1.25;
+  line-height: 1.12;
 }
 
 .auth-title p {
   color: rgba(248, 244, 234, 0.68);
-  font-size: clamp(14px, 2.3vw, 22px);
+  font-size: clamp(16px, 2vw, 22px);
   margin: 10px 0 0;
 }
 
@@ -1709,10 +1692,10 @@ body:has(#authScreen:not([hidden])) {
 .auth-quote {
   color: rgba(255, 232, 184, 0.88);
   font-family: Georgia, "Noto Serif KR", serif;
-  font-size: 15px;
+  font-size: clamp(17px, 2.1vw, 25px);
   line-height: 1.8;
-  margin: clamp(330px, 52vw, 560px) 0 clamp(6px, 1.5vw, 16px);
-  text-align: center;
+  margin: clamp(210px, 30vw, 360px) 0 clamp(16px, 2vw, 26px);
+  text-align: left;
 }
 
 .auth-panel {
@@ -1722,8 +1705,8 @@ body:has(#authScreen:not([hidden])) {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.38);
   display: grid;
   gap: 14px;
-  width: min(680px, 100%);
-  margin-inline: auto;
+  width: min(560px, 100%);
+  margin: 0;
   padding: 22px;
   backdrop-filter: blur(10px);
 }
@@ -1810,29 +1793,37 @@ body:has(#authScreen:not([hidden])) {
 }
 
 @media (max-width: 760px) {
+  .auth-screen {
+    background:
+      linear-gradient(180deg, rgba(1, 4, 8, 0.58) 0%, rgba(1, 4, 8, 0.78) 56%, rgba(1, 4, 8, 0.96) 100%),
+      url("assets/login-iris-main.jpg") center top / cover no-repeat;
+  }
+
   .auth-card {
-    width: min(620px, 100%);
-    background-position: center 24%;
-    background-size: auto 72%;
+    width: 100%;
+    min-height: calc(100vh - 58px);
+    padding: clamp(54px, 10vh, 86px) 22px 86px;
+  }
+
+  .auth-title {
+    text-align: left;
   }
 
   .auth-quote {
-    margin-top: clamp(320px, 76vw, 500px);
+    margin-top: clamp(260px, 62vw, 420px);
   }
 }
 
 @media (max-width: 480px) {
   .auth-screen {
-    padding: 6px;
+    padding: 0;
   }
 
   .auth-card {
-    border-radius: 10px;
-    max-width: calc(100vw - 12px);
-    min-height: calc(100vh - 12px);
-    padding: 18px 18px 28px;
-    background-position: center 24%;
-    background-size: auto 72%;
+    border-radius: 0;
+    max-width: none;
+    min-height: calc(100vh - 58px);
+    padding: 48px 18px 82px;
   }
 
   .auth-title h1 {
@@ -1845,12 +1836,11 @@ body:has(#authScreen:not([hidden])) {
   }
 
   .auth-brand {
-    margin: -18px -18px 20px;
-    padding: 14px 16px;
+    display: none;
   }
 
   .auth-quote {
-    margin-top: clamp(310px, 82vw, 430px);
+    margin-top: clamp(250px, 78vw, 390px);
   }
 
   .auth-panel {
@@ -1912,6 +1902,234 @@ body {
   background: #050711;
   border-color: rgba(50, 215, 202, 0.18);
   box-shadow: 0 20px 70px rgba(0, 0, 0, 0.55);
+}
+
+/* 홍채촬영 로그인 화면은 홈 화면 히어로와 같은 기준으로 표시 */
+body:has(#authScreen:not([hidden])) {
+  background: #03050b !important;
+}
+
+#authScreen.auth-screen {
+  align-items: stretch !important;
+  background:
+    linear-gradient(90deg, rgba(2, 8, 14, 0.42) 0%, rgba(2, 8, 14, 0.48) 42%, rgba(2, 8, 14, 0.92) 100%),
+    url("assets/login-iris-main.jpg") center 18% / cover no-repeat !important;
+  display: flex !important;
+  justify-content: flex-start !important;
+  min-height: min(790px, calc(100vh - 70px)) !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+#authScreen.auth-screen[hidden],
+#appShell.app-shell[hidden] {
+  display: none !important;
+}
+
+#authScreen .auth-card {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  display: block !important;
+  margin: 0 0 0 clamp(20px, 8vw, 130px) !important;
+  max-width: none !important;
+  min-height: min(790px, calc(100vh - 70px)) !important;
+  overflow: visible !important;
+  padding: 70px 0 120px !important;
+  width: min(680px, 90%) !important;
+}
+
+#authScreen .auth-brand,
+#authScreen .auth-hero,
+#authScreen .auth-quote,
+#authScreen .auth-footer {
+  display: none !important;
+}
+
+#authScreen .auth-title {
+  margin: 0 !important;
+  text-align: left !important;
+}
+
+#authScreen .auth-title .eyebrow {
+  color: #3de0d5 !important;
+  font-size: 0.72rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+  margin: 0 0 18px !important;
+  text-transform: uppercase !important;
+}
+
+#authScreen .auth-title h1 {
+  color: #f6f7f1 !important;
+  font-family: Inter, "Segoe UI", "Noto Sans KR", Arial, sans-serif !important;
+  font-size: clamp(38px, 5vw, 64px) !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.08 !important;
+  margin: 0 !important;
+  max-width: 680px !important;
+  word-break: keep-all !important;
+}
+
+#authScreen .auth-title .hero-copy {
+  color: rgba(255, 255, 255, 0.84) !important;
+  font-size: clamp(17px, 2vw, 24px) !important;
+  line-height: 1.75 !important;
+  margin: 30px 0 0 !important;
+  max-width: 560px !important;
+  word-break: keep-all !important;
+}
+
+#authScreen .auth-panel {
+  background: rgba(5, 14, 24, 0.76) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  display: grid !important;
+  gap: 14px !important;
+  margin: 36px 0 0 !important;
+  padding: 22px !important;
+  width: min(520px, 100%) !important;
+}
+
+#authScreen .auth-panel h2 {
+  color: #ffffff !important;
+  font-size: 28px !important;
+  font-weight: 900 !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+
+#authScreen .auth-copy {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 14px !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+
+#authScreen .auth-form input {
+  background: rgba(3, 5, 12, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+#authScreen .auth-form .primary {
+  background: #32d7ca !important;
+  border: 1px solid #32d7ca !important;
+  border-radius: 7px !important;
+  color: #031311 !important;
+  min-height: 50px !important;
+}
+
+#authScreen .signup-form button {
+  background: rgba(5, 14, 24, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #f6f7f1 !important;
+}
+
+@media (max-width: 760px) {
+  #authScreen.auth-screen {
+    background:
+      linear-gradient(180deg, rgba(2, 8, 14, 0.25) 0%, rgba(2, 8, 14, 0.52) 46%, rgba(2, 8, 14, 0.95) 100%),
+      url("assets/login-iris-main.jpg") center 10% / cover no-repeat !important;
+    min-height: calc(100vh - 58px) !important;
+  }
+
+  #authScreen .auth-card {
+    margin: 0 auto !important;
+    min-height: calc(100vh - 58px) !important;
+    padding: 54px 18px 92px !important;
+    width: min(520px, calc(100% - 32px)) !important;
+  }
+
+  #authScreen .auth-title h1 {
+    font-size: clamp(30px, 8.8vw, 46px) !important;
+  }
+
+  #authScreen .auth-title .hero-copy {
+    font-size: 16px !important;
+    margin-top: 24px !important;
+  }
+
+  #authScreen .auth-panel {
+    margin-top: 28px !important;
+    padding: 18px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  #authScreen .auth-card {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    width: 100% !important;
+  }
+
+  #authScreen .auth-title h1 {
+    font-size: clamp(28px, 9vw, 38px) !important;
+  }
+
+  #authScreen .auth-title .hero-copy br {
+    display: none !important;
+  }
+
+  #authScreen .auth-panel h2 {
+    font-size: 24px !important;
+  }
+}
+
+/* 로그인/회원가입 입력 영역 반응형 보정 */
+#authScreen .auth-panel {
+  max-width: calc(100vw - 40px) !important;
+}
+
+#authScreen .auth-form label,
+#authScreen .auth-form input,
+#authScreen .auth-form button {
+  min-width: 0 !important;
+}
+
+#authScreen .signup-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+#authScreen .signup-form button {
+  grid-column: 1 / -1 !important;
+}
+
+@media (max-width: 640px) {
+  #authScreen.auth-screen {
+    overflow-y: auto !important;
+  }
+
+  #authScreen .auth-card {
+    margin: 0 auto !important;
+    padding-top: 34px !important;
+    padding-bottom: 72px !important;
+    width: min(520px, calc(100% - 24px)) !important;
+  }
+
+  #authScreen .auth-title h1 {
+    font-size: clamp(28px, 8.2vw, 40px) !important;
+  }
+
+  #authScreen .auth-title .hero-copy {
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    margin-top: 18px !important;
+  }
+
+  #authScreen .auth-panel {
+    margin-top: 22px !important;
+    max-width: 100% !important;
+    padding: 16px !important;
+  }
+
+  #authScreen .signup-form {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 .panel-block {
@@ -2823,5 +3041,92 @@ body.health-page {
 @media (max-width: 620px) {
   .health-page .health-submit-bar {
     margin-bottom: calc(112px + env(safe-area-inset-bottom));
+  }
+}
+
+/* 로그인 카드 폭을 화면 크기에 맞춰 자연스럽게 확장 */
+#authScreen .auth-card {
+  width: min(820px, calc(100% - 10vw)) !important;
+}
+
+#authScreen .auth-panel {
+  width: min(720px, 100%) !important;
+}
+
+#authScreen .signup-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+#authScreen .signup-form button {
+  grid-column: 1 / -1 !important;
+}
+
+@media (min-width: 1280px) {
+  #authScreen .auth-card {
+    width: min(880px, 58vw) !important;
+  }
+
+  #authScreen .auth-panel {
+    width: min(760px, 100%) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #authScreen .auth-card {
+    width: calc(100% - 28px) !important;
+  }
+
+  #authScreen .auth-panel {
+    width: 100% !important;
+  }
+
+  #authScreen .signup-form {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* 로그인 박스 과확장 보정: 보기 좋은 최대폭까지만 반응 */
+#authScreen .auth-card {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: clamp(360px, 54vw, 860px) !important;
+}
+
+#authScreen .auth-panel {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: 680px !important;
+  width: 100% !important;
+}
+
+#authScreen .signup-form {
+  grid-template-columns: 1fr !important;
+}
+
+#authScreen .signup-form button {
+  grid-column: auto !important;
+}
+
+@media (min-width: 1280px) {
+  #authScreen .auth-card {
+    width: clamp(520px, 48vw, 900px) !important;
+  }
+
+  #authScreen .auth-panel {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    max-width: 720px !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #authScreen .auth-card {
+    width: calc(100% - 28px) !important;
+  }
+
+  #authScreen .auth-panel {
+    max-width: none !important;
+    width: 100% !important;
   }
 }

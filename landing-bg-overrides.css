@@ -5,7 +5,7 @@ body::before {
 body {
   background:
     linear-gradient(rgba(2, 8, 14, 0.38), rgba(2, 8, 14, 0.74)),
-    url("assets/login-iris-main.jpg") center 18% / cover no-repeat fixed !important;
+    url("assets/login-iris-main.jpg") center 6% / cover no-repeat fixed !important;
 }
 
 .hero {
@@ -50,8 +50,30 @@ footer {
   background: rgba(21, 16, 6, 0.82);
 }
 
+.hero h1 {
+  font-size: clamp(48px, 7.2vw, 96px) !important;
+  line-height: 1.04 !important;
+}
+
+.hero-copy {
+  font-size: clamp(18px, 2.25vw, 26px) !important;
+  line-height: 1.68 !important;
+}
+
+.eyebrow {
+  font-size: 13px !important;
+}
+
 @media (max-width: 760px) {
   .hero {
     background-image: none !important;
+  }
+
+  .hero h1 {
+    font-size: clamp(42px, 13vw, 66px) !important;
+  }
+
+  .hero-copy {
+    font-size: 18px !important;
   }
 }

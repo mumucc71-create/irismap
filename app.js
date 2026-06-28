@@ -235,6 +235,7 @@ function initializeAuth() {
     setAuthMessage("");
     signupForm.reset();
     prepareSignupDefaults();
+    if (redirectAfterLogin()) return;
     showApp();
     await restoreSavedEyeImagesForCurrentUser();
     restoreMappingOverlayState();
@@ -265,6 +266,7 @@ function initializeAuth() {
     localStorage.setItem(AUTH_SESSION_KEY, phoneKey);
     setAuthMessage("");
     loginForm.reset();
+    if (redirectAfterLogin()) return;
     showApp();
     await restoreSavedEyeImagesForCurrentUser();
     restoreMappingOverlayState();
@@ -289,6 +291,16 @@ function showApp() {
 function showAuth() {
   authScreen.hidden = false;
   appShell.hidden = true;
+}
+
+function redirectAfterLogin() {
+  const target = new URLSearchParams(location.search).get("next");
+  if (!target) return false;
+  const cleanTarget = target.replace(/\\/g, "/");
+  if (/^(https?:|file:|\/\/)/i.test(cleanTarget)) return false;
+  if (!/^[\w.-]+\.html(?:[?#].*)?$/.test(cleanTarget)) return false;
+  location.href = cleanTarget;
+  return true;
 }
 
 function getUsers() {

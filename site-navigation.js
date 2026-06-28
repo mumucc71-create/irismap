@@ -142,7 +142,8 @@
     const activeKey = PAGE_KEYS[file] || "";
     const isLoggedIn = loggedIn();
     if (!isLoggedIn && requiresLogin(file)) {
-      location.href = "iris.html";
+      const target = `${file}${location.search || ""}${location.hash || ""}`;
+      location.href = `iris.html?next=${encodeURIComponent(target)}`;
       return;
     }
     prepareAnchors(file);

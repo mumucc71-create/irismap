@@ -2,56 +2,37 @@ const ADMIN_EMAIL = "mumu5499@hanmail.net";
 const SHEET_NAME = "쇼핑알림";
 
 function doPost(e) {
-  const data = e && e.parameter ? e.parameter : {};
-  const source = data.source || "consult";
+  const data = parsePostData_(e);
+  const type = data.type || data.source || "상담";
   const createdAt = data.createdAt || new Date().toISOString();
   const sheet = getSheet_();
+  const memo = getMemo_(data);
+  const address = getAddress_(data);
 
-  const itemsText = buildItemsText_(data.orderItems);
+  const itemsText = buildItemsText_(data.orderItems, data);
   const totalText = data.total ? Number(data.total).toLocaleString("ko-KR") + "원" : "";
 
   sheet.appendRow([
     new Date(),
     createdAt,
-    source,
+    type,
     data.name || "",
     data.phone || "",
+    data.email || "",
     data.availableTime || "",
-    data.memo || "",
+    address,
+    memo,
     data.orderId || "",
     itemsText,
     totalText,
     data.page || ""
   ]);
 
-  const subject = source === "order"
+  const subject = type === "주문" || type === "order"
     ? "[IRIS MAPPING LAB] 쇼핑 주문 알림"
-    : "[IRIS MAPPING LAB] 쇼핑 상담요청";
+    : "[IRIS MAPPING LAB] 상담요청";
 
-  const body = source === "order"
-    ? [
-        "쇼핑 주문 알림이 접수되었습니다.",
-        "",
-        "주문번호: " + (data.orderId || ""),
-        "이름: " + (data.name || ""),
-        "연락처: " + (data.phone || ""),
-        "주문 상품:",
-        itemsText || "상품 정보 없음",
-        "총 금액: " + totalText,
-        "메모: " + (data.memo || ""),
-        "페이지: " + (data.page || ""),
-        "접수일시: " + createdAt
-      ].join("\n")
-    : [
-        "쇼핑 상담요청이 접수되었습니다.",
-        "",
-        "이름: " + (data.name || ""),
-        "연락처: " + (data.phone || ""),
-        "상담 가능 시간: " + (data.availableTime || ""),
-        "페이지: " + (data.page || ""),
-        "접수일시: " + createdAt
-      ].join("\n");
-
+  const body = type === "주문" || type === "order" ? buildOrderBody_(data, itemsText, totalText, createdAt, memo, address) : buildConsultBody_(data, createdAt, memo);
   MailApp.sendEmail(ADMIN_EMAIL, subject, body);
 
   return ContentService
@@ -59,17 +40,70 @@ function doPost(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+function parsePostData_(e) {
+  if (e && e.postData && e.postData.contents) {
+    try {
+      return JSON.parse(e.postData.contents);
+    } catch (_) {
+      return e.parameter || {};
+    }
+  }
+  return e && e.parameter ? e.parameter : {};
+}
+
 function getSheet_() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
   if (!sheet) sheet = spreadsheet.insertSheet(SHEET_NAME);
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow(["저장일시", "접수일시", "구분", "이름", "연락처", "상담 가능 시간", "메모", "주문번호", "주문상품", "총금액", "페이지"]);
+    sheet.appendRow(["저장일시", "접수일시", "구분", "이름", "연락처", "이메일", "상담 가능 시간", "주소", "문의내용", "주문번호", "주문상품", "총금액", "페이지"]);
   }
   return sheet;
 }
 
-function buildItemsText_(orderItems) {
+function getMemo_(data) {
+  return data.message || data.memo || data.content || data.inquiry || data["문의내용"] || "";
+}
+
+function getAddress_(data) {
+  return data.address || data.shippingAddress || data.addr || data["주소"] || "";
+}
+
+function buildConsultBody_(data, createdAt, memo) {
+  return [
+    "상담요청이 접수되었습니다.",
+    "",
+    "이름: " + (data.name || ""),
+    "연락처: " + (data.phone || ""),
+    "이메일: " + (data.email || ""),
+    "문의내용: " + memo,
+    "페이지: " + (data.page || ""),
+    "접수일시: " + createdAt
+  ].join("\n");
+}
+
+function buildOrderBody_(data, itemsText, totalText, createdAt, memo, address) {
+  return [
+    "쇼핑 주문이 접수되었습니다.",
+    "",
+    "주문번호: " + (data.orderId || ""),
+    "이름: " + (data.name || ""),
+    "연락처: " + (data.phone || ""),
+    "이메일: " + (data.email || ""),
+    "주소: " + address,
+    "주문 상품:",
+    itemsText || "상품 정보 없음",
+    "총 금액: " + totalText,
+    "메모: " + memo,
+    "페이지: " + (data.page || ""),
+    "접수일시: " + createdAt
+  ].join("\n");
+}
+
+function buildItemsText_(orderItems, data) {
+  if (data && (data.orderItemsText || data.products || data.productSummary || data["주문상품"])) {
+    return data.orderItemsText || data.products || data.productSummary || data["주문상품"];
+  }
   if (!orderItems) return "";
   try {
     const items = JSON.parse(orderItems);

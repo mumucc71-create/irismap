@@ -1,0 +1,16 @@
+# Local backup files and folders
+back/
+back2/
+backups/
+navigation-backup-*/
+
+*.bak
+*.bak-*
+*.backup-*
+*.backup*
+*.lnk
+
+# Local OS/editor noise
+Thumbs.db
+Desktop.ini
+.DS_Store

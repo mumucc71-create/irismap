@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>쇼핑 알림 연동 설정 | IRIS MAPPING LAB</title>
+  <title>상담 알림 설정 | IRIS MAPPING LAB</title>
   <style>
     :root{color-scheme:dark;--line:#25495d;--text:#f5f7fa;--muted:#9db0bd;--cyan:#38d9d2;--gold:#e7b74e}
     *{box-sizing:border-box}
@@ -23,9 +23,9 @@
 </head>
 <body>
 <main>
-  <h1>쇼핑 알림 연동 설정</h1>
+  <h1>상담 알림 설정</h1>
   <section class="card">
-    <p>Google Apps Script 웹앱 URL을 저장하면 상담요청과 주문 알림이 구글시트에 저장되고 <code>mumu5499@hanmail.net</code>으로 자동 이메일이 발송됩니다.</p>
+    <p>Google Apps Script 웹앱 URL을 저장하면 상담요청이 구글시트에 저장되고 <code>mumu5499@hanmail.net</code>으로 자동 이메일이 발송됩니다.</p>
     <label>Google Apps Script 웹앱 URL
       <input id="scriptUrl" placeholder="https://script.google.com/macros/s/....../exec">
     </label>
@@ -39,18 +39,23 @@
   </section>
   <section class="card">
     <h2>설정 순서</h2>
-    <p>1. 구글시트 하나를 만듭니다.</p>
-    <p>2. 구글시트에서 확장 프로그램 → Apps Script를 엽니다.</p>
-    <p>3. <code>consult-google-apps-script.gs</code> 내용을 붙여넣고 저장합니다.</p>
-    <p>4. 배포 → 새 배포 → 웹 앱으로 배포합니다. 실행 권한은 본인, 액세스 권한은 모든 사용자로 설정합니다.</p>
-    <p>5. 발급된 웹앱 URL을 이 화면에 붙여넣고 저장합니다.</p>
+    <p>1. Google Apps Script 웹앱 URL을 입력합니다.</p>
+    <p>2. URL 저장을 누르면 이 브라우저에 전송 URL이 저장됩니다.</p>
+    <p>3. 상담신청은 name, phone, email, message, type 필드를 JSON POST로 전송합니다.</p>
+    <p>4. 장바구니 주문은 name, phone, email, address, orderItemsText, total, type 필드를 JSON POST로 전송합니다.</p>
   </section>
 </main>
 <script>
   const KEY = "irisConsultGoogleScriptUrl";
+  const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSNHb7KjCL6lqu08bCzqFQjeN2B17xj46nQT3LMCZuvUmqiIQZsa8uQswbrJZDzK0/exec";
   const input = document.querySelector("#scriptUrl");
   const status = document.querySelector("#status");
-  input.value = localStorage.getItem(KEY) || "";
+
+  if (!localStorage.getItem(KEY)) {
+    localStorage.setItem(KEY, DEFAULT_SCRIPT_URL);
+  }
+  input.value = localStorage.getItem(KEY) || DEFAULT_SCRIPT_URL;
+
   document.querySelector("#saveButton").addEventListener("click", () => {
     const value = input.value.trim();
     if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(value)) {
@@ -58,12 +63,13 @@
       return;
     }
     localStorage.setItem(KEY, value);
-    status.textContent = "상담요청과 주문 알림 자동 전송 URL을 저장했습니다.";
+    status.textContent = "상담요청 자동 전송 URL을 저장했습니다.";
   });
+
   document.querySelector("#clearButton").addEventListener("click", () => {
     localStorage.removeItem(KEY);
     input.value = "";
-    status.textContent = "URL을 삭제했습니다. 상담요청과 주문 알림은 로컬 저장만 됩니다.";
+    status.textContent = "URL을 삭제했습니다. 상담요청은 로컬 저장만 됩니다.";
   });
 </script>
 </body>
