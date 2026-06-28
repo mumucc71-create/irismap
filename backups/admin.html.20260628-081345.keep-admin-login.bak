@@ -95,7 +95,6 @@
 <script src="shopping-recommendation-db.js"></script>
 <script>
   const ADMIN_PASSWORD="pero@549034";
-  const ADMIN_SESSION_KEY="irisShoppingAdminLoggedIn";
   const form=document.querySelector("#productForm");
   const imageInput=document.querySelector("#imageFile");
   initGate();
@@ -105,7 +104,6 @@
     const password=document.querySelector("#adminPassword").value.trim();
     const allowed=password===ADMIN_PASSWORD;
     if(allowed){
-      localStorage.setItem(ADMIN_SESSION_KEY,"1");
       showAdmin();
     }else{
       document.querySelector("#gateStatus").textContent="비밀번호가 맞지 않습니다.";
@@ -161,10 +159,6 @@
   });
 
   function initGate(){
-    if(localStorage.getItem(ADMIN_SESSION_KEY)==="1"){
-      showAdmin();
-      return;
-    }
     document.querySelector("#adminPanel").classList.add("hidden");
     document.querySelector("#gate").classList.remove("hidden");
   }

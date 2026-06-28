@@ -10,7 +10,7 @@
 <body>
   <section id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="auth-brand">
+      <div class="auth-brand" hidden>
         <span class="auth-logo" aria-hidden="true"></span>
         <strong>IRIS MAPPING LAB</strong>
       </div>
