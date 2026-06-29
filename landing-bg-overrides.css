@@ -67,6 +67,15 @@ footer {
 @media (max-width: 760px) {
   .hero {
     background-image: none !important;
+    min-height: auto !important;
+  }
+
+  .hero-content {
+    padding-bottom: 36px !important;
+  }
+
+  .iris-map-section {
+    margin-top: 18px !important;
   }
 
   .hero h1 {
