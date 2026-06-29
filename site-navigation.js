@@ -4,6 +4,8 @@
   if (document.documentElement.classList.contains("embedded-universe")) return;
 
   const SESSION_KEY = "irisMappingSession";
+  const FIREBASE_CONFIG_SCRIPT = "firebase-config.js?v=20260628-firebase-1";
+  const FIREBASE_SYNC_SCRIPT = "firebase-sync.js?v=20260628-firebase-1";
   const ROUTES = {
     home: { label: "홈", href: "index.html" },
     health: { label: "라이프진단", href: "health.html" },
@@ -138,6 +140,7 @@
   }
 
   function init() {
+    loadFirebaseSync();
     const file = currentFile();
     const activeKey = PAGE_KEYS[file] || "";
     const isLoggedIn = loggedIn();
@@ -151,6 +154,21 @@
     hideLegacyHomeLinks();
     buildMobileTabs(activeKey, isLoggedIn);
     buildPageCta(file);
+  }
+
+  function loadFirebaseSync() {
+    if (document.querySelector("script[data-iris-firebase-sync]")) return;
+    const config = document.createElement("script");
+    config.src = FIREBASE_CONFIG_SCRIPT;
+    config.dataset.irisFirebaseConfig = "1";
+    config.onload = () => {
+      const sync = document.createElement("script");
+      sync.type = "module";
+      sync.src = FIREBASE_SYNC_SCRIPT;
+      sync.dataset.irisFirebaseSync = "1";
+      document.head.appendChild(sync);
+    };
+    document.head.appendChild(config);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

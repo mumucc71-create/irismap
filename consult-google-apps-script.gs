@@ -33,11 +33,29 @@ function doPost(e) {
     : "[IRIS MAPPING LAB] 상담요청";
 
   const body = type === "주문" || type === "order" ? buildOrderBody_(data, itemsText, totalText, createdAt, memo, address) : buildConsultBody_(data, createdAt, memo);
-  MailApp.sendEmail(ADMIN_EMAIL, subject, body);
+  const mailResult = sendAdminMail_(subject, body);
 
   return ContentService
-    .createTextOutput(JSON.stringify({ ok: true }))
+    .createTextOutput(JSON.stringify({
+      ok: true,
+      success: true,
+      saved: true,
+      emailSent: mailResult.sent,
+      emailError: mailResult.error
+    }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function sendAdminMail_(subject, body) {
+  try {
+    MailApp.sendEmail(ADMIN_EMAIL, subject, body);
+    return { sent: true, error: "" };
+  } catch (error) {
+    return {
+      sent: false,
+      error: error && error.message ? error.message : String(error)
+    };
+  }
 }
 
 function parsePostData_(e) {

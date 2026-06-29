@@ -204,11 +204,11 @@
     try {
       const response = await fetch(consultScriptUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(payload)
       });
       const result = await response.json().catch(() => ({}));
-      return response.ok && result.success !== false;
+      return response.ok && (result.success === true || result.saved === true);
     } catch (_) {
       const failed = readJson("irisShoppingConsultFailedQueue", []);
       failed.push({ ...data, createdAt:new Date().toISOString() });

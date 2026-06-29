@@ -124,9 +124,7 @@
     .mini-meter { width:110px; height:7px; margin-top:6px; border-radius:4px; overflow:hidden; background:#172735; }
     .mini-meter span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--cyan),var(--gold)); }
     .evidence-raw { margin-top:14px; border:1px solid var(--line); border-radius:8px; background:#07101a; }
-    .evidence-raw > summary { padding:17px 20px; color:var(--gold); font-weight:800; cursor:pointer; list-style:none; }
-    .evidence-raw > summary::after { content:"+"; float:right; color:var(--cyan); font-size:20px; }
-    .evidence-raw[open] > summary::after { content:"−"; }
+    .evidence-raw-title { margin:0; padding:17px 20px; color:var(--gold); font-size:18px; font-weight:800; }
     .evidence-raw-content { padding:0 14px 14px; }
     .evidence-raw-content .detail-grid { grid-template-columns:minmax(0,1fr); }
     .evidence-raw-content .detail-grid .card { width:100%; }
@@ -157,8 +155,8 @@
       <section id="life-diagnosis" class="result-support">
         <section class="card life-diagnosis-card"><div id="lifeStrategy"></div></section>
       </section>
-      <details id="evidence-view" class="evidence-raw result-support">
-        <summary>상세 근거 펼치기</summary>
+      <section id="evidence-view" class="evidence-raw result-support">
+        <h2 class="evidence-raw-title">상세 근거</h2>
         <div class="evidence-raw-content">
           <section class="card evidence-dashboard">
             <div class="evidence-dashboard-head"><div><h2>근거 한눈에 보기</h2><p>관리 우선영역과 자료별 일치 여부를 표와 그래프로 정리했습니다.</p></div></div>
@@ -169,7 +167,7 @@
             <article class="card wide"><h2>홍채·문진 상세 교차 근거</h2><div id="crossComparison"></div></article>
           </section>
         </div>
-      </details>
+      </section>
     </section>
     
   </main>
