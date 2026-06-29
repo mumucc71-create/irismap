@@ -65,12 +65,15 @@ footer {
 }
 
 @media (max-width: 760px) {
-  .hero {
+  .hero,
+  #authScreen.auth-screen {
     background-image: none !important;
     min-height: auto !important;
   }
 
-  .hero-content {
+  .hero-content,
+  #authScreen .auth-card {
+    min-height: auto !important;
     padding-bottom: 36px !important;
   }
 
