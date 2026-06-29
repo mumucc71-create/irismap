@@ -232,6 +232,7 @@ function initializeAuth() {
     };
     saveUsers(users);
     localStorage.setItem(AUTH_SESSION_KEY, phoneKey);
+    window.dispatchEvent(new CustomEvent("irisAuthChanged"));
     setAuthMessage("");
     signupForm.reset();
     prepareSignupDefaults();
@@ -264,6 +265,7 @@ function initializeAuth() {
     }
 
     localStorage.setItem(AUTH_SESSION_KEY, phoneKey);
+    window.dispatchEvent(new CustomEvent("irisAuthChanged"));
     setAuthMessage("");
     loginForm.reset();
     if (redirectAfterLogin()) return;
@@ -277,6 +279,7 @@ function initializeAuth() {
 
   logoutButton?.addEventListener("click", () => {
     localStorage.removeItem(AUTH_SESSION_KEY);
+    window.dispatchEvent(new CustomEvent("irisAuthChanged"));
     clearEyeImagesFromMemory();
     prepareSignupDefaults();
     showAuth();

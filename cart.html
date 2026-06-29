@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>장바구니 | IRIS MAPPING LAB</title>
+  <title>?λ컮援щ땲 | IRIS MAPPING LAB</title>
   <link rel="stylesheet" href="site-navigation.css?v=20260623-fantasy-bg-1">
   <style>
     :root{color-scheme:dark;--line:#25495d;--text:#f5f7fa;--muted:#9db0bd;--cyan:#38d9d2;--gold:#e7b74e}
@@ -43,42 +43,42 @@
 <body>
 <main class="page">
   <span class="kicker">SHOPPING CART</span>
-  <h1>장바구니</h1>
+  <h1>?λ컮援щ땲</h1>
 
   <section class="card">
     <div id="cartList" class="cart-list"></div>
   </section>
 
   <section class="card total">
-    <span>총 상품 금액</span>
-    <span id="cartTotal" class="price">0원</span>
+    <span>珥??곹뭹 湲덉븸</span>
+    <span id="cartTotal" class="price">0??/span>
   </section>
 
   <section class="card bank">
-    <h2>입금 안내</h2>
-    <p>결제 기능은 사용하지 않습니다. 주문 상품을 확인한 뒤 아래 계좌로 입금해 주세요.</p>
-    <p><strong>카카오뱅크 3333-04-9698210 이고은</strong></p>
-    <p class="muted">아래 주문 알림을 보내면 운영자에게 주문 내용이 이메일과 구글시트로 전달됩니다.</p>
+    <h2>?낃툑 ?덈궡</h2>
+    <p>寃곗젣 湲곕뒫? ?ъ슜?섏? ?딆뒿?덈떎. 二쇰Ц ?곹뭹???뺤씤?????꾨옒 怨꾩쥖濡??낃툑??二쇱꽭??</p>
+    <p><strong>移댁뭅?ㅻ콉??3333-04-9698210 ?닿퀬?</strong></p>
+    <p class="muted">?꾨옒 二쇰Ц ?뚮┝??蹂대궡硫??댁쁺?먯뿉寃?二쇰Ц ?댁슜???대찓?쇨낵 援ш??쒗듃濡??꾨떖?⑸땲??</p>
   </section>
 
   <section class="card">
-    <h2>주문 알림 보내기</h2>
+    <h2>二쇰Ц ?뚮┝ 蹂대궡湲?/h2>
     <form id="orderForm">
       <div class="order-grid">
-        <label>이름<input name="name" autocomplete="name" required placeholder="이름"></label>
-        <label>연락처<input name="phone" autocomplete="tel" required placeholder="전화번호"></label>
-        <label>이메일<input name="email" type="email" autocomplete="email" required placeholder="이메일"></label>
-        <label class="wide">주소<input name="address" autocomplete="street-address" required placeholder="상품을 받을 주소를 적어주세요"></label>
-        <label class="wide">메모<textarea name="memo" placeholder="입금자명, 요청사항 등을 적어주세요"></textarea></label>
+        <label>?대쫫<input name="name" autocomplete="name" required placeholder="?대쫫"></label>
+        <label>?곕씫泥?input name="phone" autocomplete="tel" required placeholder="?꾪솕踰덊샇"></label>
+        <label>?대찓??input name="email" type="email" autocomplete="email" required placeholder="?대찓??></label>
+        <label class="wide">二쇱냼<input name="address" autocomplete="street-address" required placeholder="?곹뭹??諛쏆쓣 二쇱냼瑜??곸뼱二쇱꽭??></label>
+        <label class="wide">硫붾え<textarea name="memo" placeholder="?낃툑?먮챸, ?붿껌?ы빆 ?깆쓣 ?곸뼱二쇱꽭??></textarea></label>
       </div>
-      <div class="actions"><button class="button" type="submit">주문 알림 보내기</button></div>
+      <div class="actions"><button class="button" type="submit">二쇰Ц ?뚮┝ 蹂대궡湲?/button></div>
     </form>
     <p id="orderStatus" class="status" role="status"></p>
   </section>
 
   <div class="actions">
-    <a class="button ghost" href="shopping.html">쇼핑 계속하기</a>
-    <button id="clearCart" class="button danger" type="button">장바구니 비우기</button>
+    <a class="button ghost" href="shopping.html">?쇳븨 怨꾩냽?섍린</a>
+    <button id="clearCart" class="button danger" type="button">?λ컮援щ땲 鍮꾩슦湲?/button>
   </div>
 </main>
 
@@ -111,7 +111,7 @@
     const cart = readCart();
     const status = document.querySelector("#orderStatus");
     if (!cart.length) {
-      status.textContent = "장바구니에 상품이 없습니다.";
+      status.textContent = "?λ컮援щ땲???곹뭹???놁뒿?덈떎.";
       return;
     }
     const data = Object.fromEntries(new FormData(event.currentTarget).entries());
@@ -122,7 +122,7 @@
       ...data,
       items: cart,
       total: getTotal(cart),
-      status: "접수",
+      status: "?묒닔",
       createdAt: new Date().toISOString(),
       page: location.href
     };
@@ -130,7 +130,7 @@
     orders.push(order);
     localStorage.setItem(ORDER_KEY, JSON.stringify(orders));
     const sent = await sendOrder(order);
-    status.textContent = sent ? "접수되었습니다." : "전송에 실패했습니다.";
+    status.textContent = sent ? "?묒닔?섏뿀?듬땲??" : "?꾩넚???ㅽ뙣?덉뒿?덈떎.";
   });
 
   function restoreOrderCustomer() {
@@ -156,8 +156,8 @@
     const cart = readCart();
     const list = document.querySelector("#cartList");
     if (!cart.length) {
-      list.innerHTML = '<div class="empty">장바구니에 담긴 상품이 없습니다.</div>';
-      document.querySelector("#cartTotal").textContent = "0원";
+      list.innerHTML = '<div class="empty">?λ컮援щ땲???닿릿 ?곹뭹???놁뒿?덈떎.</div>';
+      document.querySelector("#cartTotal").textContent = "0??;
       return;
     }
     list.innerHTML = cart.map((item) => `
@@ -165,19 +165,19 @@
         ${item.imageUrl ? `<img class="thumb" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">` : `<div class="thumb is-camera" aria-hidden="true"></div>`}
         <div>
           <strong class="item-title">${escapeHtml(item.name)}</strong>
-          <p class="muted">${escapeHtml(item.description || item.reason || "상품 설명이 등록되어 있습니다.")}</p>
-          <button class="button ghost" type="button" data-remove="${escapeHtml(item.productId)}">삭제</button>
+          <p class="muted">${escapeHtml(item.description || item.reason || "?곹뭹 ?ㅻ챸???깅줉?섏뼱 ?덉뒿?덈떎.")}</p>
+          <button class="button ghost" type="button" data-remove="${escapeHtml(item.productId)}">??젣</button>
         </div>
-        <div class="price">${Number(item.salePrice || 0).toLocaleString("ko-KR")}원 × ${Number(item.quantity || 1)}</div>
+        <div class="price">${Number(item.salePrice || 0).toLocaleString("ko-KR")}??횞 ${Number(item.quantity || 1)}</div>
       </article>`).join("");
-    document.querySelector("#cartTotal").textContent = getTotal(cart).toLocaleString("ko-KR") + "원";
+    document.querySelector("#cartTotal").textContent = getTotal(cart).toLocaleString("ko-KR") + "??;
   }
 
   async function sendOrder(order) {
     if (!orderScriptUrl) return false;
     const orderItemsText = formatOrderItems(order.items || []);
     const payload = {
-      type: "주문",
+      type: "二쇰Ц",
       name: order.name || "",
       phone: order.phone || "",
       email: order.email || "",
@@ -209,16 +209,17 @@
   }
   function formatOrderItems(items) {
     return items.map((item) => {
-      const name = item.name || "상품명 없음";
+      const name = item.name || "?곹뭹紐??놁쓬";
       const quantity = Number(item.quantity || 1);
-      const price = Number(item.salePrice || 0).toLocaleString("ko-KR") + "원";
-      return `${name} / 수량 ${quantity}개 / 가격 ${price}`;
+      const price = Number(item.salePrice || 0).toLocaleString("ko-KR") + "??;
+      return `${name} / ?섎웾 ${quantity}媛?/ 媛寃?${price}`;
     }).join("\n");
   }
   function readCart() { return readJson(CART_KEY, []); }
   function readJson(key, fallback) { try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; } catch (_) { return fallback; } }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char])); }
 </script>
-<script src="site-navigation.js?v=20260628-login-return-1"></script>
+<script src="site-navigation.js?v=20260630-firebase-key-1"></script>
 </body>
 </html>
+
