@@ -33,6 +33,8 @@ let syncTimer = null;
 let applyingRemoteSnapshot = false;
 let remoteSnapshotLoadedForUid = "";
 let remoteSnapshotPromise = null;
+let remoteSnapshotMeta = null;
+let firestoreWriteUnlockedForUid = "";
 let lastFirebaseError = null;
 const debugEntries = [];
 
@@ -87,7 +89,7 @@ async function bootFirebase() {
     if (!user) return;
     try {
       await ensureRemoteSnapshotLoaded(user.uid);
-      await syncNow();
+      await maybeInitialUploadFromLocal(user.uid, "auth:state");
     } catch (error) {
       logError("auth:state:sync-error", error);
     }
@@ -169,8 +171,8 @@ async function signInWithPhoneName(name, phone, profile = {}) {
   }
 
   await ensureRemoteSnapshotLoaded(currentUser.uid);
-  await saveMemberProfile(currentUser.uid, phoneKey, { ...profile, name: name || profile.name || "", phone: profile.phone || phoneKey });
-  await syncNow();
+  await maybeSaveMemberProfileFromLocal(currentUser.uid, phoneKey, { ...profile, name: name || profile.name || "", phone: profile.phone || phoneKey }, "auth:login");
+  await maybeInitialUploadFromLocal(currentUser.uid, "auth:login");
   return currentUser;
 }
 
@@ -189,12 +191,55 @@ function scheduleSync() {
   syncTimer = setTimeout(() => syncNow().catch((error) => console.warn("[IRIS Firebase] 동기화 실패:", error)), SYNC_DEBOUNCE_MS);
 }
 
+async function maybeInitialUploadFromLocal(uid, reason) {
+  if (!firebaseReady || !currentUser || currentUser.uid !== uid) return;
+  await ensureRemoteSnapshotLoaded(uid);
+
+  if (hasRemoteSnapshotData(uid)) {
+    firestoreWriteUnlockedForUid = uid;
+    console.info("[IRIS Firebase upload blocked]", {
+      uid,
+      reason,
+      firestoreHasData: true,
+      message: "Firestore 데이터가 있어 localStorage 최초 업로드를 차단했습니다."
+    });
+    logStep("firestore:initial-upload:blocked", { uid, reason });
+    return;
+  }
+
+  console.info("[IRIS Firebase initial upload]", {
+    uid,
+    reason,
+    firestoreHasData: false,
+    message: "Firestore가 비어 있어 localStorage를 최초 업로드합니다."
+  });
+  logStep("firestore:initial-upload:allowed", { uid, reason });
+  await syncNowWithOptions({ allowBeforeUnlock: true, reason });
+  firestoreWriteUnlockedForUid = uid;
+}
+
 async function syncNow() {
+  return syncNowWithOptions({});
+}
+
+async function syncNowWithOptions(options = {}) {
   if (!firebaseReady || !currentUser) return;
   await ensureRemoteSnapshotLoaded(currentUser.uid);
+  const uid = currentUser.uid;
+
+  if (firestoreWriteUnlockedForUid !== uid && hasRemoteSnapshotData(uid) && !options.allowBeforeUnlock) {
+    console.info("[IRIS Firebase upload blocked]", {
+      uid,
+      reason: options.reason || "syncNow",
+      firestoreHasData: true,
+      message: "Firestore 복원 전 localStorage 업로드를 차단했습니다."
+    });
+    logStep("firestore:write:blocked-before-unlock", { uid, reason: options.reason || "syncNow" });
+    return;
+  }
+
   const snapshot = collectLocalStorageSnapshot();
   const { doc, setDoc, serverTimestamp } = firebaseApi.firestoreModule;
-  const uid = currentUser.uid;
 
   logStep("firestore:snapshot:write:start", { uid, keyCount: Object.keys(snapshot).length });
   await setDoc(doc(db, "users", uid, "sync", "localStorage"), {
@@ -299,6 +344,30 @@ async function saveMemberProfile(uid, phone, profile) {
   logStep("firestore:user:write:done", { uid });
 }
 
+async function maybeSaveMemberProfileFromLocal(uid, phone, profile, reason) {
+  if (!firebaseReady || !uid) return;
+  const { doc, getDoc } = firebaseApi.firestoreModule;
+  const ref = doc(db, "users", uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    console.info("[IRIS Firebase member upload blocked]", {
+      uid,
+      reason,
+      firestoreHasUser: true,
+      message: "Firestore 회원정보가 있어 localStorage 회원정보 업로드를 차단했습니다."
+    });
+    logStep("firestore:user:local-upload:blocked", { uid, reason });
+    return;
+  }
+  console.info("[IRIS Firebase member initial upload]", {
+    uid,
+    reason,
+    firestoreHasUser: false,
+    message: "Firestore 회원정보가 없어 localStorage 회원정보를 최초 업로드합니다."
+  });
+  await saveMemberProfile(uid, phone, profile);
+}
+
 async function loadRemoteSnapshot(uid) {
   const { doc, getDoc } = firebaseApi.firestoreModule;
   const ref = doc(db, "users", uid, "sync", "localStorage");
@@ -306,6 +375,13 @@ async function loadRemoteSnapshot(uid) {
   const snap = await getDoc(ref);
   if (!snap.exists()) {
     logStep("firestore:snapshot:read:empty", { uid });
+    console.info("[IRIS Firebase read]", {
+      uid,
+      firestorePath: `users/${uid}/sync/localStorage`,
+      success: true,
+      hasData: false
+    });
+    remoteSnapshotMeta = { uid, hasData: false, keyCount: 0 };
     remoteSnapshotLoadedForUid = uid;
     return;
   }
@@ -313,10 +389,25 @@ async function loadRemoteSnapshot(uid) {
   const data = snap.data()?.data || {};
   if (!Object.keys(data).length) {
     logStep("firestore:snapshot:read:no-keys", { uid });
+    console.info("[IRIS Firebase read]", {
+      uid,
+      firestorePath: `users/${uid}/sync/localStorage`,
+      success: true,
+      hasData: false,
+      keyCount: 0
+    });
+    remoteSnapshotMeta = { uid, hasData: false, keyCount: 0 };
     remoteSnapshotLoadedForUid = uid;
     return;
   }
   logStep("firestore:snapshot:read:done", { uid, keyCount: Object.keys(data).length });
+  console.info("[IRIS Firebase read]", {
+    uid,
+    firestorePath: `users/${uid}/sync/localStorage`,
+    success: true,
+    hasData: true,
+    keyCount: Object.keys(data).length
+  });
   console.info("[IRIS Firebase restore]", {
     firestorePath: `users/${uid}/sync/localStorage`,
     restoredKeys: Object.keys(data).filter((key) => key === SESSION_KEY || key.startsWith(EYE_MARKERS_KEY_PREFIX) || key === "irisReadingResult")
@@ -324,22 +415,40 @@ async function loadRemoteSnapshot(uid) {
 
   applyingRemoteSnapshot = true;
   try {
+    const remoteKeys = new Set(Object.keys(data));
+    const keysToRemove = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!isManagedKey(key)) continue;
+      if (key === SESSION_KEY) continue;
+      if (!remoteKeys.has(key)) keysToRemove.push(key);
+    }
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
     Object.entries(data).forEach(([key, value]) => {
       if (!isManagedKey(key)) return;
-      const localValue = localStorage.getItem(key);
-      if (localValue === null || localValue === "" || key !== SESSION_KEY) {
-        localStorage.setItem(key, value);
-      }
+      if (key === SESSION_KEY && !value) return;
+      localStorage.setItem(key, value);
     });
   } finally {
     applyingRemoteSnapshot = false;
   }
+  remoteSnapshotMeta = { uid, hasData: true, keyCount: Object.keys(data).length };
   remoteSnapshotLoadedForUid = uid;
+  console.info("[IRIS Firebase restore success]", {
+    uid,
+    restoredFromFirestore: true,
+    localStorageIgnored: true,
+    removedLocalOnlyKeys: "managed keys not present in Firestore"
+  });
 
   if (!sessionStorage.getItem("irisFirebaseSnapshotLoaded")) {
     sessionStorage.setItem("irisFirebaseSnapshotLoaded", "1");
     if (!location.hash.includes("no-reload")) location.reload();
   }
+}
+
+function hasRemoteSnapshotData(uid) {
+  return Boolean(remoteSnapshotMeta && remoteSnapshotMeta.uid === uid && remoteSnapshotMeta.hasData);
 }
 
 async function testWrite() {
