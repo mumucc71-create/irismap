@@ -2,6 +2,10 @@
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
 const chartInput = document.querySelector("#chartInput");
 const pairInput = document.querySelector("#pairInput");
+const leftCameraInput = document.querySelector("#leftCameraInput");
+const rightCameraInput = document.querySelector("#rightCameraInput");
+const leftCameraButton = document.querySelector("#leftCameraButton");
+const rightCameraButton = document.querySelector("#rightCameraButton");
 const chartPreview = document.querySelector("#chartPreview");
 const chartEmpty = document.querySelector("#chartEmpty");
 const emptyState = document.querySelector("#emptyState");
@@ -469,6 +473,32 @@ pairInput.addEventListener("change", async (event) => {
   renderDetailMap(null);
   draw();
 });
+
+leftCameraButton?.addEventListener("click", () => leftCameraInput?.click());
+rightCameraButton?.addEventListener("click", () => rightCameraInput?.click());
+
+leftCameraInput?.addEventListener("change", (event) => handleSingleEyeCapture("left", event));
+rightCameraInput?.addEventListener("change", (event) => handleSingleEyeCapture("right", event));
+
+async function handleSingleEyeCapture(eyeKey, event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+
+  await setEyeImage(eyeKey, file);
+  normalizePairView();
+  await persistEyeState(eyeKey);
+
+  state.activeEye = eyeKey;
+  updateActiveEye();
+  updatePhotoNames();
+  updateUiEnabled();
+  syncControls();
+  renderSelection(null);
+  renderMarkers();
+  renderDetailMap(null);
+  draw();
+}
 
 for (const input of Object.values(controls)) {
   input.addEventListener("input", () => {
