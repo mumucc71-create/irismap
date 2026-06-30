@@ -396,8 +396,9 @@
     }
 
     function renderStatus() {
+      const hasHealthData=healthFindings.length>0;
       const hasLifestyle=integratedResult.results.some((group)=>(group.selected.lifestyleMatches||[]).length);
-      const items=[["라이프진단",!!health],["유니버스 병력",Array.isArray(universeHistory)&&universeHistory.length>0],["생활습관",hasLifestyle],["홍채 교차확인",!!irisForAccount]];
+      const items=[["라이프진단",hasHealthData],["유니버스 병력",Array.isArray(universeHistory)&&universeHistory.length>0],["생활습관",hasLifestyle],["홍채 교차확인",!!irisForAccount]];
       document.querySelector("#sourceStatus").innerHTML=items.map(([name,ready])=>`<div class="card status"><strong>${name}</strong><b class="${ready?"ready":""}">${ready?"준비 완료":"자료 없음"}</b></div>`).join("");
     }
 

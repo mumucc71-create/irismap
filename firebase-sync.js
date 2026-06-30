@@ -5,6 +5,8 @@ const USERS_KEY = "irisMappingUsers";
 const EYE_MARKERS_KEY_PREFIX = "irisEyeMarkers";
 const MAX_VALUE_BYTES = 850000;
 const SYNC_DEBOUNCE_MS = 900;
+const ANALYSIS_DOC_ID = "current";
+const LEGACY_ANALYSIS_DOC_ID = "latest";
 
 const managedKeyPatterns = [
   /^iris/i,
@@ -50,6 +52,11 @@ window.IrisFirebase = {
   resetCurrentUserData,
   saveIrisEyeState,
   loadIrisAnalysis,
+  saveIrisSnapshot,
+  listIrisSnapshots,
+  loadIrisSnapshot,
+  deleteIrisSnapshot,
+  debugSyncInfo,
   debug: () => debugEntries.slice(),
   lastError: () => lastFirebaseError,
   getCurrentUser: () => currentUser
@@ -92,7 +99,19 @@ async function bootFirebase() {
   authModule.onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     logStep("auth:state", { uid: user?.uid || null, email: user?.email || null });
-    if (user) console.info("[IRIS Firebase UID]", user.uid, "Firestore path:", `users/${user.uid}`);
+    if (user) {
+      const phoneKey = normalizePhone(localStorage.getItem(SESSION_KEY) || user.email || "");
+      console.info("[IRIS Firebase UID CHECK]", {
+        uid: user.uid,
+        email: user.email || "",
+        phoneKey,
+        analysisReadPath: `users/${user.uid}/analysis/${ANALYSIS_DOC_ID}`,
+        analysisWritePath: `users/${user.uid}/analysis/${ANALYSIS_DOC_ID}`,
+        snapshotReadPath: `users/${user.uid}/sync/localStorage`,
+        snapshotWritePath: `users/${user.uid}/sync/localStorage`,
+        analysisReadWriteSame: true
+      });
+    }
     if (!user) return;
     try {
       await restoreMemberProfileFromFirestore(user.uid, "auth:state");
@@ -205,6 +224,8 @@ async function resetCurrentUserData() {
 
   const documentRefs = [
     doc(db, "users", uid, "sync", "localStorage"),
+    doc(db, "users", uid, "analysis", ANALYSIS_DOC_ID),
+    doc(db, "users", uid, "analysis", "latest"),
     doc(db, "users", uid, "irisResults", "latest"),
     doc(db, "users", uid, "irisMarkers", "latest"),
     doc(db, "users", uid, "cart", "current"),
@@ -266,8 +287,26 @@ async function saveIrisEyeState(payload = {}) {
   const uid = currentUser.uid;
   const { doc, getDoc, setDoc, serverTimestamp } = firebaseApi.firestoreModule;
   const { ref, uploadBytes, getDownloadURL } = firebaseApi.storageModule;
-  const analysisRef = doc(db, "users", uid, "analysis", "latest");
-  const currentSnap = await getDoc(analysisRef).catch(() => null);
+  const analysisRef = doc(db, "users", uid, "analysis", ANALYSIS_DOC_ID);
+  const legacyAnalysisRef = doc(db, "users", uid, "analysis", LEGACY_ANALYSIS_DOC_ID);
+  console.info("[IRIS Firebase path check]", {
+    uid,
+    writePath: `users/${uid}/analysis/${ANALYSIS_DOC_ID}`,
+    readPath: `users/${uid}/analysis/${ANALYSIS_DOC_ID}`,
+    samePath: true,
+    eyeKey
+  });
+  let currentSnap = await getDoc(analysisRef).catch(() => null);
+  if (!currentSnap?.exists?.()) {
+    currentSnap = await getDoc(legacyAnalysisRef).catch(() => null);
+    if (currentSnap?.exists?.()) {
+      console.info("[IRIS Firebase analysis fallback]", {
+        uid,
+        fallbackReadPath: `users/${uid}/analysis/${LEGACY_ANALYSIS_DOC_ID}`,
+        writePath: `users/${uid}/analysis/${ANALYSIS_DOC_ID}`
+      });
+    }
+  }
   const existing = currentSnap?.exists?.() ? (currentSnap.data()?.[eyeKey] || {}) : {};
   const nextEye = {
     ...existing,
@@ -309,7 +348,7 @@ async function saveIrisEyeState(payload = {}) {
     eyeKey,
     hasImage: Boolean(nextEye.originalUrl),
     markerCount: nextEye.markers.length,
-    firestorePath: `users/${uid}/analysis/latest`
+    firestorePath: `users/${uid}/analysis/${ANALYSIS_DOC_ID}`
   });
   return nextEye;
 }
@@ -318,15 +357,41 @@ async function loadIrisAnalysis() {
   if (!firebaseReady || !currentUser?.uid) return null;
   const uid = currentUser.uid;
   const { doc, getDoc } = firebaseApi.firestoreModule;
-  const analysisRef = doc(db, "users", uid, "analysis", "latest");
-  logStep("firestore:analysis:read:start", { uid });
-  const snap = await getDoc(analysisRef);
+  const readPath = `users/${uid}/analysis/${ANALYSIS_DOC_ID}`;
+  const legacyReadPath = `users/${uid}/analysis/${LEGACY_ANALYSIS_DOC_ID}`;
+  const analysisRef = doc(db, "users", uid, "analysis", ANALYSIS_DOC_ID);
+  const legacyAnalysisRef = doc(db, "users", uid, "analysis", LEGACY_ANALYSIS_DOC_ID);
+  logStep("firestore:analysis:read:start", { uid, readPath });
+  console.info("[IRIS Firebase path check]", {
+    uid,
+    readPath,
+    writePath: readPath,
+    samePath: true
+  });
+  let snap = await getDoc(analysisRef);
+  let usedPath = readPath;
   if (!snap.exists()) {
-    logStep("firestore:analysis:read:empty", { uid });
+    const legacySnap = await getDoc(legacyAnalysisRef).catch(() => null);
+    if (legacySnap?.exists?.()) {
+      snap = legacySnap;
+      usedPath = legacyReadPath;
+      console.info("[IRIS Firebase analysis fallback]", {
+        uid,
+        readPath,
+        fallbackReadPath: legacyReadPath,
+        message: "current 문서가 없어 기존 latest 문서를 읽었습니다."
+      });
+    }
+  }
+  if (!snap.exists()) {
+    logStep("firestore:analysis:read:empty", { uid, readPath });
     console.info("[IRIS Firebase analysis]", {
       uid,
       exists: false,
-      firestorePath: `users/${uid}/analysis/latest`
+      firestorePath: readPath,
+      readPath,
+      writePath: readPath,
+      samePath: true
     });
     return null;
   }
@@ -334,14 +399,84 @@ async function loadIrisAnalysis() {
   console.info("[IRIS Firebase analysis]", {
     uid,
     exists: true,
-    firestorePath: `users/${uid}/analysis/latest`,
+    firestorePath: usedPath,
+    readPath: usedPath,
+    writePath: readPath,
+    samePath: usedPath === readPath,
+    keys: Object.keys(data),
     rightEyeImage: Boolean(data.right?.originalUrl),
     leftEyeImage: Boolean(data.left?.originalUrl),
     rightEyeMarkers: Array.isArray(data.right?.markers) ? data.right.markers.length : 0,
     leftEyeMarkers: Array.isArray(data.left?.markers) ? data.left.markers.length : 0
   });
-  logStep("firestore:analysis:read:done", { uid });
+  console.info("[IRIS Firebase analysis raw JSON]", data);
+  logStep("firestore:analysis:read:done", { uid, readPath: usedPath });
   return data;
+}
+
+async function saveIrisSnapshot(snapshot = {}) {
+  if (!firebaseReady || !currentUser?.uid) return null;
+  const uid = currentUser.uid;
+  const { collection, addDoc, serverTimestamp } = firebaseApi.firestoreModule;
+  const savesRef = collection(db, "users", uid, "irisPhotoSaves");
+  const payload = {
+    ...snapshot,
+    uid,
+    savedAt: snapshot.savedAt || new Date().toISOString(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+  const ref = await addDoc(savesRef, payload);
+  console.info("[IRIS Firebase snapshot saved]", {
+    uid,
+    snapshotId: ref.id,
+    markerCount: payload.summary?.markerCount || 0,
+    firestorePath: `users/${uid}/irisPhotoSaves/${ref.id}`
+  });
+  return { id: ref.id, ...payload };
+}
+
+async function listIrisSnapshots() {
+  if (!firebaseReady || !currentUser?.uid) return [];
+  const uid = currentUser.uid;
+  const { collection, getDocs, query, orderBy } = firebaseApi.firestoreModule;
+  const savesRef = collection(db, "users", uid, "irisPhotoSaves");
+  const q = query(savesRef, orderBy("savedAt", "desc"));
+  const snap = await getDocs(q);
+  const rows = [];
+  snap.forEach((item) => rows.push({ id: item.id, ...item.data() }));
+  console.info("[IRIS Firebase snapshot list]", { uid, count: rows.length });
+  return rows;
+}
+
+async function loadIrisSnapshot(snapshotId) {
+  if (!firebaseReady || !currentUser?.uid || !snapshotId) return null;
+  const uid = currentUser.uid;
+  const { doc, getDoc } = firebaseApi.firestoreModule;
+  const ref = doc(db, "users", uid, "irisPhotoSaves", snapshotId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const data = { id: snap.id, ...snap.data() };
+  console.info("[IRIS Firebase snapshot loaded]", {
+    uid,
+    snapshotId,
+    rightMarkers: Array.isArray(data.right?.markers) ? data.right.markers.length : 0,
+    leftMarkers: Array.isArray(data.left?.markers) ? data.left.markers.length : 0
+  });
+  return data;
+}
+
+async function deleteIrisSnapshot(snapshotId) {
+  if (!firebaseReady || !currentUser?.uid || !snapshotId) return false;
+  const uid = currentUser.uid;
+  const { doc, deleteDoc } = firebaseApi.firestoreModule;
+  await deleteDoc(doc(db, "users", uid, "irisPhotoSaves", snapshotId));
+  console.info("[IRIS Firebase snapshot deleted]", {
+    uid,
+    snapshotId,
+    firestorePath: `users/${uid}/irisPhotoSaves/${snapshotId}`
+  });
+  return true;
 }
 
 function createAccountPassword(phoneKey) {
@@ -792,7 +927,29 @@ function getCurrentProfile(phone, snapshot) {
 }
 
 function normalizePhone(value) {
-  return String(value || "").replace(/\D/g, "");
+  let digits = String(value || "").replace(/\D/g, "");
+  if (digits.startsWith("0082")) digits = digits.slice(4);
+  if (digits.startsWith("82")) digits = digits.slice(2);
+  if (digits.length === 10 && digits.startsWith("10")) digits = `0${digits}`;
+  return digits;
+}
+
+function debugSyncInfo() {
+  const uid = currentUser?.uid || "";
+  const phone = normalizePhone(localStorage.getItem(SESSION_KEY));
+  const info = {
+    uid,
+    email: currentUser?.email || "",
+    phone,
+    firestoreAnalysisReadPath: uid ? `users/${uid}/analysis/${ANALYSIS_DOC_ID}` : "",
+    firestoreAnalysisWritePath: uid ? `users/${uid}/analysis/${ANALYSIS_DOC_ID}` : "",
+    firestoreSnapshotPath: uid ? `users/${uid}/sync/localStorage` : "",
+    sameAnalysisPath: true,
+    remoteSnapshotMeta,
+    firebaseReady
+  };
+  console.info("[IRIS Firebase debugSyncInfo]", info);
+  return info;
 }
 
 function readJson(key, fallback) {

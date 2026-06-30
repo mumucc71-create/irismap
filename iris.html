@@ -89,6 +89,23 @@
         </div>
       </div>
 
+      <section class="iris-save-panel" aria-label="홍채사진 저장 관리">
+        <div class="iris-save-actions">
+          <button id="saveIrisSessionButton" type="button">저장하기</button>
+          <button id="loadIrisSessionButton" type="button">불러오기</button>
+          <button id="resetIrisPointsButton" type="button">점만 초기화</button>
+          <button id="largeIrisViewButton" type="button">크게 보기</button>
+        </div>
+        <div id="irisSaveStatus" class="iris-save-status" aria-live="polite"></div>
+        <div id="irisSaveListPanel" class="iris-save-list-panel" hidden>
+          <div class="iris-save-list-head">
+            <strong>저장된 홍채사진</strong>
+            <button id="closeIrisSaveListButton" type="button">닫기</button>
+          </div>
+          <div id="irisSaveList" class="iris-save-list"></div>
+        </div>
+      </section>
+
       <section id="irisPersonalDashboard" class="iris-personal-dashboard" aria-live="polite" hidden>
         <article class="iris-analysis-hero">
           <div class="iris-analysis-hero-copy">

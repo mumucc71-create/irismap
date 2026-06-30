@@ -37,6 +37,14 @@ const manualObservationList = document.querySelector("#manualObservationList");
 const manualObservationGuide = document.querySelector("#manualObservationGuide");
 const deleteObservationButton = document.querySelector("#deleteObservationButton");
 const clearObservationsButton = document.querySelector("#clearObservationsButton");
+const saveIrisSessionButton = document.querySelector("#saveIrisSessionButton");
+const loadIrisSessionButton = document.querySelector("#loadIrisSessionButton");
+const resetIrisPointsButton = document.querySelector("#resetIrisPointsButton");
+const largeIrisViewButton = document.querySelector("#largeIrisViewButton");
+const irisSaveStatus = document.querySelector("#irisSaveStatus");
+const irisSaveListPanel = document.querySelector("#irisSaveListPanel");
+const irisSaveList = document.querySelector("#irisSaveList");
+const closeIrisSaveListButton = document.querySelector("#closeIrisSaveListButton");
 
 const controls = {
   centerX: document.querySelector("#centerX"),
@@ -370,7 +378,11 @@ function createLoginOnlyUser(name, phone, phoneKey) {
 }
 
 function normalizePhone(value) {
-  return String(value || "").replace(/\D/g, "");
+  let digits = String(value || "").replace(/\D/g, "");
+  if (digits.startsWith("0082")) digits = digits.slice(4);
+  if (digits.startsWith("82")) digits = digits.slice(2);
+  if (digits.length === 10 && digits.startsWith("10")) digits = `0${digits}`;
+  return digits;
 }
 
 function phoneVariants(value) {
@@ -423,6 +435,7 @@ function createEyeState() {
     image: null,
     sourceBlob: null,
     normalizedBlob: null,
+    firebaseImageSynced: false,
     alignmentMode: false,
     positionLocked: false,
     imageBounds: { x: 0, y: 0, width: canvas.width, height: canvas.height, scale: 1 },
@@ -575,6 +588,7 @@ alignmentSaveButton?.addEventListener("click", async () => {
     eye.positionLocked = shouldLock;
     if (shouldLock) {
       eye.normalizedBlob = await createNormalizedIrisBlob(eye);
+      eye.firebaseImageSynced = false;
       eye.centerX = NORMALIZED_CENTER_X;
       eye.centerY = NORMALIZED_CENTER_Y;
       eye.irisRadius = NORMALIZED_IRIS_RADIUS;
@@ -654,6 +668,39 @@ clearObservationsButton?.addEventListener("click", () => {
   renderMarkers();
   draw();
   scheduleEyeStatePersistence(state.activeEye);
+});
+
+saveIrisSessionButton?.addEventListener("click", () => {
+  saveCurrentIrisSnapshot();
+});
+
+loadIrisSessionButton?.addEventListener("click", () => {
+  toggleIrisSaveList(true);
+});
+
+closeIrisSaveListButton?.addEventListener("click", () => {
+  toggleIrisSaveList(false);
+});
+
+resetIrisPointsButton?.addEventListener("click", () => {
+  resetCurrentIrisPoints();
+});
+
+largeIrisViewButton?.addEventListener("click", () => {
+  document.body.classList.toggle("iris-large-mode");
+  largeIrisViewButton.textContent = document.body.classList.contains("iris-large-mode") ? "크게 보기 닫기" : "크게 보기";
+});
+
+irisSaveList?.addEventListener("click", (event) => {
+  const loadButton = event.target.closest("[data-load-iris-save]");
+  if (loadButton) {
+    loadIrisSnapshot(loadButton.dataset.loadIrisSave);
+    return;
+  }
+  const deleteButton = event.target.closest("[data-delete-iris-save]");
+  if (deleteButton) {
+    deleteIrisSnapshot(deleteButton.dataset.deleteIrisSave);
+  }
 });
 
 exportButton?.addEventListener("click", () => {
@@ -831,6 +878,7 @@ async function setEyeImage(eyeKey, file) {
   eye.fileName = file.name;
   eye.image = image;
   eye.sourceBlob = file;
+  eye.firebaseImageSynced = false;
   eye.positionLocked = false;
   eye.markers = [];
   eye.selected = null;
@@ -873,7 +921,7 @@ function runEyePhotoStore(mode, operation) {
 }
 
 function currentPhotoOwnerKey() {
-  return localStorage.getItem(AUTH_SESSION_KEY) || "";
+  return normalizePhone(localStorage.getItem(AUTH_SESSION_KEY) || "");
 }
 
 function mappingOverlayStorageKey() {
@@ -1001,6 +1049,7 @@ async function persistEyeState(eyeKey) {
     if (!eye.image || !eye.sourceBlob) {
       await runEyePhotoStore("readwrite", (store) => store.delete(id));
       persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
+      await persistEyeStateToFirebase(eyeKey, eye, { includeImage: false });
       return;
     }
 
@@ -1015,8 +1064,28 @@ async function persistEyeState(eyeKey) {
       updatedAt: new Date().toISOString()
     }));
     persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
+    await persistEyeStateToFirebase(eyeKey, eye, { includeImage: !eye.firebaseImageSynced });
   } catch (error) {
     console.warn("홍채 사진을 저장하지 못했습니다.", error);
+  }
+}
+
+async function persistEyeStateToFirebase(eyeKey, eye, options = {}) {
+  const api = window.IrisFirebase;
+  if (!api?.saveIrisEyeState || !api?.getCurrentUser?.()?.uid) return;
+  const markers = serializeEyeMarkers(eye);
+  try {
+    await api.saveIrisEyeState({
+      eyeKey,
+      fileName: eye.fileName,
+      blob: options.includeImage ? eye.sourceBlob : null,
+      normalizedBlob: options.includeImage ? eye.normalizedBlob : null,
+      geometry: serializeEyeGeometry(eye),
+      markers
+    });
+    if (options.includeImage) eye.firebaseImageSynced = true;
+  } catch (error) {
+    console.warn("Firebase 홍채 사진/점 동기화에 실패했습니다.", error);
   }
 }
 
@@ -1068,7 +1137,230 @@ function restoreEyeGeometry(eye, geometry) {
   return true;
 }
 
-async function restoreSavedEyeImagesForCurrentUser() {
+async function createCompressedEyeDataUrl(eye) {
+  if (!eye?.image) return "";
+  const maxSizes = [760, 640, 520, 420];
+  let lastDataUrl = "";
+  for (const maxSize of maxSizes) {
+    const sourceWidth = eye.image.naturalWidth || eye.image.width || maxSize;
+    const sourceHeight = eye.image.naturalHeight || eye.image.height || maxSize;
+    const scale = Math.min(1, maxSize / Math.max(sourceWidth, sourceHeight));
+    const output = document.createElement("canvas");
+    output.width = Math.max(1, Math.round(sourceWidth * scale));
+    output.height = Math.max(1, Math.round(sourceHeight * scale));
+    const outputContext = output.getContext("2d");
+    outputContext.fillStyle = "#000";
+    outputContext.fillRect(0, 0, output.width, output.height);
+    outputContext.drawImage(eye.image, 0, 0, output.width, output.height);
+    lastDataUrl = output.toDataURL("image/jpeg", 0.72);
+    if (lastDataUrl.length < 380000) return lastDataUrl;
+  }
+  return lastDataUrl;
+}
+
+async function buildIrisSnapshotPayload() {
+  const right = await buildIrisSnapshotEye("right");
+  const left = await buildIrisSnapshotEye("left");
+  const markerCount = (right.markers?.length || 0) + (left.markers?.length || 0);
+  return {
+    schemaVersion: 1,
+    savedAt: new Date().toISOString(),
+    storagePlan: {
+      highResolutionStorage: "firebase-storage-later",
+      currentImageStorage: "firestore-compressed-display-image"
+    },
+    right,
+    left,
+    summary: {
+      rightMarkerCount: right.markers.length,
+      leftMarkerCount: left.markers.length,
+      markerCount,
+      observationText: buildManualObservationText()
+    }
+  };
+}
+
+async function buildIrisSnapshotEye(eyeKey) {
+  const eye = state.eyes[eyeKey];
+  return {
+    eyeKey,
+    fileName: eye.fileName || "",
+    hasImage: Boolean(eye.image),
+    displayImage: await createCompressedEyeDataUrl(eye),
+    geometry: serializeEyeGeometry(eye),
+    markers: serializeEyeMarkers(eye)
+  };
+}
+
+function buildManualObservationText() {
+  return ["right", "left"].flatMap((eyeKey) => {
+    const eyeLabel = state.map?.eyes?.[eyeKey]?.label || eyeKey;
+    return (state.eyes[eyeKey].markers || []).map((marker) =>
+      `${eyeLabel} ${marker.code || ""} ${marker.organ || ""} ${marker.type || ""} ${marker.clockTime || ""} ${marker.strength || ""}`.trim()
+    );
+  }).join("\n");
+}
+
+async function saveCurrentIrisSnapshot() {
+  if (!window.IrisFirebase?.getCurrentUser?.()?.uid) {
+    setIrisSaveStatus("로그인 후 저장할 수 있습니다.", true);
+    return;
+  }
+  if (!state.eyes.right.image && !state.eyes.left.image) {
+    setIrisSaveStatus("저장할 홍채사진이 없습니다.", true);
+    return;
+  }
+  try {
+    setIrisSaveStatus("저장 중입니다...");
+    const payload = await buildIrisSnapshotPayload();
+    await window.IrisFirebase.saveIrisSnapshot(payload);
+    localStorage.setItem("irisSnapshotCache:lastSavedAt", payload.savedAt);
+    setIrisSaveStatus("저장되었습니다.");
+    await refreshIrisSnapshotList();
+  } catch (error) {
+    console.warn("홍채사진 저장 실패", error);
+    setIrisSaveStatus("저장에 실패했습니다.", true);
+  }
+}
+
+async function toggleIrisSaveList(forceOpen) {
+  if (!irisSaveListPanel) return;
+  const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : irisSaveListPanel.hidden;
+  irisSaveListPanel.hidden = !shouldOpen;
+  if (shouldOpen) await refreshIrisSnapshotList();
+}
+
+async function refreshIrisSnapshotList() {
+  if (!irisSaveList) return;
+  if (!window.IrisFirebase?.getCurrentUser?.()?.uid) {
+    irisSaveList.innerHTML = `<p class="iris-save-empty">로그인 후 저장 목록을 볼 수 있습니다.</p>`;
+    return;
+  }
+  try {
+    const snapshots = await window.IrisFirebase.listIrisSnapshots();
+    if (!snapshots.length) {
+      irisSaveList.innerHTML = `<p class="iris-save-empty">저장된 홍채사진이 없습니다.</p>`;
+      return;
+    }
+    irisSaveList.innerHTML = snapshots.map((item) => {
+      const savedAt = formatIrisSnapshotDate(item.savedAt || item.createdAt);
+      const count = item.summary?.markerCount ?? ((item.right?.markers?.length || 0) + (item.left?.markers?.length || 0));
+      return `
+        <article class="iris-save-item">
+          <div>
+            <strong>${savedAt}</strong>
+            <span>점 ${count}개 · 우안 ${item.right?.hasImage ? "사진 있음" : "없음"} · 좌안 ${item.left?.hasImage ? "사진 있음" : "없음"}</span>
+          </div>
+          <div class="iris-save-item-actions">
+            <button type="button" data-load-iris-save="${item.id}">불러오기</button>
+            <button type="button" data-delete-iris-save="${item.id}">삭제</button>
+          </div>
+        </article>
+      `;
+    }).join("");
+  } catch (error) {
+    console.warn("저장된 홍채사진 목록 불러오기 실패", error);
+    irisSaveList.innerHTML = `<p class="iris-save-empty">저장 목록을 불러오지 못했습니다.</p>`;
+  }
+}
+
+async function loadIrisSnapshot(snapshotId) {
+  if (!snapshotId || !window.IrisFirebase?.loadIrisSnapshot) return;
+  try {
+    setIrisSaveStatus("불러오는 중입니다...");
+    const snapshot = await window.IrisFirebase.loadIrisSnapshot(snapshotId);
+    if (!snapshot) {
+      setIrisSaveStatus("저장본을 찾을 수 없습니다.", true);
+      return;
+    }
+    await applyIrisSnapshot(snapshot);
+    setIrisSaveStatus("불러왔습니다. 점만 초기화하면 같은 사진 위에 다시 표시할 수 있습니다.");
+    toggleIrisSaveList(false);
+  } catch (error) {
+    console.warn("홍채사진 불러오기 실패", error);
+    setIrisSaveStatus("불러오기에 실패했습니다.", true);
+  }
+}
+
+async function applyIrisSnapshot(snapshot) {
+  for (const eyeKey of ["right", "left"]) {
+    const entry = snapshot[eyeKey];
+    const eye = createEyeState();
+    if (entry?.displayImage) {
+      eye.fileName = entry.fileName || `${eyeKey}-iris`;
+      eye.image = await loadImageFromSrc(entry.displayImage);
+      eye.sourceBlob = await dataUrlToBlob(entry.displayImage);
+      eye.firebaseImageSynced = true;
+      if (!restoreEyeGeometry(eye, entry.geometry)) {
+        resetAndDetectEye(eye, eyeKey);
+        normalizeEyeView(eye, NORMALIZED_IRIS_RADIUS);
+      }
+      eye.markers = restoreEyeMarkers(eye, entry.markers || entry.geometry?.markers || []);
+    }
+    state.eyes[eyeKey] = eye;
+  }
+  state.activeEye = state.eyes.right.image ? "right" : state.eyes.left.image ? "left" : "right";
+  state.selectedObservationId = null;
+  updatePhotoNames();
+  updateActiveEye();
+  syncControls();
+  renderSelection(null);
+  renderMarkers();
+  renderManualObservations();
+  renderManualObservationGuide(null);
+  renderDetailMap(null);
+  draw();
+  await persistAllEyeStates();
+}
+
+async function resetCurrentIrisPoints() {
+  state.eyes.right.markers = [];
+  state.eyes.left.markers = [];
+  state.eyes.right.selected = null;
+  state.eyes.left.selected = null;
+  state.selectedObservationId = null;
+  renderSelection(null);
+  renderMarkers();
+  renderManualObservations();
+  renderManualObservationGuide(null);
+  renderDetailMap(null);
+  draw();
+  updateUiEnabled();
+  await persistAllEyeStates();
+  setIrisSaveStatus("점과 관찰 설명을 초기화했습니다. 사진은 유지됩니다.");
+}
+
+async function deleteIrisSnapshot(snapshotId) {
+  if (!snapshotId || !window.IrisFirebase?.deleteIrisSnapshot) return;
+  try {
+    await window.IrisFirebase.deleteIrisSnapshot(snapshotId);
+    setIrisSaveStatus("저장본을 삭제했습니다.");
+    await refreshIrisSnapshotList();
+  } catch (error) {
+    console.warn("저장된 홍채사진 삭제 실패", error);
+    setIrisSaveStatus("삭제에 실패했습니다.", true);
+  }
+}
+
+function setIrisSaveStatus(message, isError = false) {
+  if (!irisSaveStatus) return;
+  irisSaveStatus.textContent = message || "";
+  irisSaveStatus.classList.toggle("is-error", Boolean(isError));
+}
+
+function formatIrisSnapshotDate(value) {
+  const raw = value?.toDate ? value.toDate() : value;
+  const date = raw ? new Date(raw) : new Date();
+  if (Number.isNaN(date.getTime())) return "저장일 확인 안 됨";
+  return date.toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
+}
+
+async function dataUrlToBlob(dataUrl) {
+  const response = await fetch(dataUrl);
+  return response.blob();
+}
+
+async function restoreSavedEyeImagesForCurrentUser(options = {}) {
   const ownerKey = currentPhotoOwnerKey();
   if (!ownerKey) return;
   const firebaseUid = window.IrisFirebase?.getCurrentUser?.()?.uid || "";
@@ -1082,6 +1374,7 @@ async function restoreSavedEyeImagesForCurrentUser() {
     getStoredEyeRecord(ownerKey, "right"),
     getStoredEyeRecord(ownerKey, "left")
   ]);
+  const firebaseAnalysis = await loadFirebaseEyeAnalysis(options.preferFirebase);
   console.info("[IRIS apply diagnostics:records]", {
     "5 rightEyeImage 존재 여부": Boolean(records[0]?.blob),
     "6 leftEyeImage 존재 여부": Boolean(records[1]?.blob),
@@ -1091,7 +1384,11 @@ async function restoreSavedEyeImagesForCurrentUser() {
   });
 
   for (const [index, eyeKey] of ["right", "left"].entries()) {
-    const record = records[index];
+    let record = records[index];
+    const firebaseRecord = firebaseAnalysis?.[eyeKey] || null;
+    if (firebaseRecord?.blob) {
+      record = firebaseRecord;
+    }
     if (!record?.blob) continue;
 
     try {
@@ -1100,6 +1397,7 @@ async function restoreSavedEyeImagesForCurrentUser() {
       eye.sourceBlob = record.blob;
       eye.normalizedBlob = record.normalizedBlob || null;
       eye.image = await loadImageFromBlob(record.blob);
+      eye.firebaseImageSynced = Boolean(record.fromFirebase);
       const geometryRestored = restoreEyeGeometry(eye, record.geometry);
       const hasSavedDetection = Number(eye.detection?.alignmentConfidence || 0) > 0;
       if (!geometryRestored || !hasSavedDetection) {
@@ -1107,7 +1405,10 @@ async function restoreSavedEyeImagesForCurrentUser() {
         normalizeEyeView(eye, NORMALIZED_IRIS_RADIUS);
       }
       const remoteMarkers = readEyeMarkersFromLocalStorage(ownerKey, eyeKey);
-      if (remoteMarkers.length) {
+      if (Array.isArray(record.remoteMarkers) && record.remoteMarkers.length) {
+        eye.markers = restoreEyeMarkers(eye, record.remoteMarkers);
+        persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
+      } else if (remoteMarkers.length) {
         eye.markers = restoreEyeMarkers(eye, remoteMarkers);
       }
       console.info("[IRIS apply diagnostics:eye]", {
@@ -1149,6 +1450,67 @@ async function restoreSavedEyeImagesForCurrentUser() {
     }
   });
   logIrisMarkerSync("markers:restored", ownerKey);
+}
+
+async function loadFirebaseEyeAnalysis(shouldWait = false) {
+  const api = window.IrisFirebase;
+  if (!api?.loadIrisAnalysis) return null;
+  if (shouldWait && !api.getCurrentUser?.()?.uid) {
+    await waitForFirebaseUser();
+  }
+  if (!api.getCurrentUser?.()?.uid) return null;
+
+  try {
+    const analysis = await api.loadIrisAnalysis();
+    if (!analysis) return null;
+    const result = {};
+    for (const eyeKey of ["right", "left"]) {
+      const entry = analysis[eyeKey];
+      if (!entry?.originalUrl) continue;
+      const blob = await fetchBlob(entry.originalUrl);
+      const normalizedBlob = entry.normalizedUrl ? await fetchBlob(entry.normalizedUrl).catch(() => null) : null;
+      result[eyeKey] = {
+        id: eyePhotoRecordId(currentPhotoOwnerKey(), eyeKey),
+        ownerKey: currentPhotoOwnerKey(),
+        eyeKey,
+        fileName: entry.fileName || `${eyeKey}-iris`,
+        blob,
+        normalizedBlob,
+        geometry: {
+          ...(entry.geometry || {}),
+          markers: Array.isArray(entry.markers) ? entry.markers : entry.geometry?.markers || []
+        },
+        remoteMarkers: Array.isArray(entry.markers) ? entry.markers : [],
+        fromFirebase: true,
+        updatedAt: entry.updatedAt || new Date().toISOString()
+      };
+      await runEyePhotoStore("readwrite", (store) => store.put(result[eyeKey])).catch(() => {});
+    }
+    return result;
+  } catch (error) {
+    console.warn("Firebase 홍채 사진/점 복원에 실패했습니다.", error);
+    return null;
+  }
+}
+
+function waitForFirebaseUser(timeoutMs = 5000) {
+  const startedAt = Date.now();
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (window.IrisFirebase?.getCurrentUser?.()?.uid || Date.now() - startedAt > timeoutMs) {
+        resolve();
+        return;
+      }
+      setTimeout(tick, 120);
+    };
+    tick();
+  });
+}
+
+async function fetchBlob(url) {
+  const response = await fetch(url, { mode: "cors" });
+  if (!response.ok) throw new Error(`이미지 다운로드 실패: ${response.status}`);
+  return response.blob();
 }
 
 function clearEyeImagesFromMemory() {
@@ -1208,6 +1570,8 @@ function updateUiEnabled() {
   }
   updateOverlayButtonLabel();
   if (clearMarkersButton) clearMarkersButton.disabled = !enabled;
+  if (saveIrisSessionButton) saveIrisSessionButton.disabled = !state.eyes.right.image && !state.eyes.left.image;
+  if (resetIrisPointsButton) resetIrisPointsButton.disabled = !state.eyes.right.markers.length && !state.eyes.left.markers.length;
   if (exportButton) exportButton.disabled = !canRunIrisAnalysis();
   swapEyesButton.disabled = !state.eyes.right.image && !state.eyes.left.image;
   emptyState.hidden = Boolean(state.eyes.right.image || state.eyes.left.image);

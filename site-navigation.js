@@ -22,7 +22,7 @@
   const PAGE_KEYS = {
     "index.html": "home", "": "home", "iris.html": "iris", "reading.html": "iris",
     "health.html": "health", "universe.html": "insurance", "universe-upload.html": "insurance",
-    "final-report.html": "total", "shopping.html": "shopping", "subscription.html": "subscription",
+    "final-report.html": "total", "shopping.html": "shopping", "cart.html": "shopping", "subscription.html": "subscription",
     "subscribe.html": "subscription", "center.html": "center", "ai-health.html": "insurance",
     "insurance.html": "insurance", "reservation.html": "reservation", "mypage.html": "mypage",
     "cases.html": "total"
