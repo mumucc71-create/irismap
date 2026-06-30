@@ -174,6 +174,10 @@ window.addEventListener("resize", () => {
   }, 120);
 });
 
+window.addEventListener("irisFirebaseReadyForApp", async () => {
+  await restoreSavedEyeImagesForCurrentUser({ preferFirebase: true });
+});
+
 healthQuestionnaireButton?.addEventListener("click", () => {
   location.href = "health.html";
 });

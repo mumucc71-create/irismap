@@ -28,6 +28,7 @@ let firebaseReady = false;
 let currentUser = null;
 let auth;
 let db;
+let storage;
 let firebaseApi;
 let syncTimer = null;
 let applyingRemoteSnapshot = false;
@@ -47,6 +48,8 @@ window.IrisFirebase = {
   signOut,
   getMemberProfile,
   resetCurrentUserData,
+  saveIrisEyeState,
+  loadIrisAnalysis,
   debug: () => debugEntries.slice(),
   lastError: () => lastFirebaseError,
   getCurrentUser: () => currentUser
@@ -70,14 +73,16 @@ async function bootFirebase() {
   const appModule = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`);
   const authModule = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-auth.js`);
   const firestoreModule = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`);
+  const storageModule = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-storage.js`);
   logStep("sdk:import:done");
 
   const app = appModule.initializeApp(CONFIG);
   logStep("initializeApp:done", { appName: app.name });
   auth = authModule.getAuth(app);
   db = firestoreModule.getFirestore(app);
+  storage = storageModule.getStorage(app);
   logStep("getFirestore:done", { projectId: CONFIG.projectId });
-  firebaseApi = { authModule, firestoreModule };
+  firebaseApi = { authModule, firestoreModule, storageModule };
   firebaseReady = true;
   window.IrisFirebase.ready = true;
   window.IrisFirebase.enabled = true;
@@ -93,6 +98,7 @@ async function bootFirebase() {
       await restoreMemberProfileFromFirestore(user.uid, "auth:state");
       await ensureRemoteSnapshotLoaded(user.uid);
       await maybeInitialUploadFromLocal(user.uid, "auth:state");
+      window.dispatchEvent(new CustomEvent("irisFirebaseReadyForApp", { detail: { uid: user.uid } }));
     } catch (error) {
       logError("auth:state:sync-error", error);
     }
@@ -252,6 +258,90 @@ function deleteIndexedDb(name) {
     request.onerror = () => resolve(false);
     request.onblocked = () => resolve(false);
   });
+}
+
+async function saveIrisEyeState(payload = {}) {
+  if (!firebaseReady || !currentUser?.uid) return null;
+  const eyeKey = payload.eyeKey === "left" ? "left" : "right";
+  const uid = currentUser.uid;
+  const { doc, getDoc, setDoc, serverTimestamp } = firebaseApi.firestoreModule;
+  const { ref, uploadBytes, getDownloadURL } = firebaseApi.storageModule;
+  const analysisRef = doc(db, "users", uid, "analysis", "latest");
+  const currentSnap = await getDoc(analysisRef).catch(() => null);
+  const existing = currentSnap?.exists?.() ? (currentSnap.data()?.[eyeKey] || {}) : {};
+  const nextEye = {
+    ...existing,
+    eyeKey,
+    fileName: payload.fileName || existing.fileName || `${eyeKey}-iris`,
+    geometry: payload.geometry || existing.geometry || null,
+    markers: Array.isArray(payload.markers) ? payload.markers : (existing.markers || []),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (payload.blob) {
+    const originalPath = `users/${uid}/iris/${eyeKey}/original-${Date.now()}.jpg`;
+    const originalRef = ref(storage, originalPath);
+    await uploadBytes(originalRef, payload.blob, { contentType: payload.blob.type || "image/jpeg" });
+    nextEye.originalPath = originalPath;
+    nextEye.originalUrl = await getDownloadURL(originalRef);
+  }
+
+  if (payload.normalizedBlob) {
+    const normalizedPath = `users/${uid}/iris/${eyeKey}/normalized-${Date.now()}.jpg`;
+    const normalizedRef = ref(storage, normalizedPath);
+    await uploadBytes(normalizedRef, payload.normalizedBlob, { contentType: payload.normalizedBlob.type || "image/jpeg" });
+    nextEye.normalizedPath = normalizedPath;
+    nextEye.normalizedUrl = await getDownloadURL(normalizedRef);
+  }
+
+  await setDoc(analysisRef, {
+    [eyeKey]: nextEye,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+
+  await setDoc(doc(db, "users", uid, "irisMarkers", "latest"), {
+    updatedAt: serverTimestamp(),
+    [`${eyeKey}EyeMarkers`]: nextEye.markers
+  }, { merge: true });
+
+  console.info("[IRIS Firebase eye saved]", {
+    uid,
+    eyeKey,
+    hasImage: Boolean(nextEye.originalUrl),
+    markerCount: nextEye.markers.length,
+    firestorePath: `users/${uid}/analysis/latest`
+  });
+  return nextEye;
+}
+
+async function loadIrisAnalysis() {
+  if (!firebaseReady || !currentUser?.uid) return null;
+  const uid = currentUser.uid;
+  const { doc, getDoc } = firebaseApi.firestoreModule;
+  const analysisRef = doc(db, "users", uid, "analysis", "latest");
+  logStep("firestore:analysis:read:start", { uid });
+  const snap = await getDoc(analysisRef);
+  if (!snap.exists()) {
+    logStep("firestore:analysis:read:empty", { uid });
+    console.info("[IRIS Firebase analysis]", {
+      uid,
+      exists: false,
+      firestorePath: `users/${uid}/analysis/latest`
+    });
+    return null;
+  }
+  const data = snap.data() || {};
+  console.info("[IRIS Firebase analysis]", {
+    uid,
+    exists: true,
+    firestorePath: `users/${uid}/analysis/latest`,
+    rightEyeImage: Boolean(data.right?.originalUrl),
+    leftEyeImage: Boolean(data.left?.originalUrl),
+    rightEyeMarkers: Array.isArray(data.right?.markers) ? data.right.markers.length : 0,
+    leftEyeMarkers: Array.isArray(data.left?.markers) ? data.left.markers.length : 0
+  });
+  logStep("firestore:analysis:read:done", { uid });
+  return data;
 }
 
 function createAccountPassword(phoneKey) {
