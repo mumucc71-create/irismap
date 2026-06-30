@@ -1067,11 +1067,24 @@ function restoreEyeGeometry(eye, geometry) {
 async function restoreSavedEyeImagesForCurrentUser() {
   const ownerKey = currentPhotoOwnerKey();
   if (!ownerKey) return;
+  const firebaseUid = window.IrisFirebase?.getCurrentUser?.()?.uid || "";
+  console.info("[IRIS apply diagnostics:start]", {
+    "1 Firebase Auth uid": firebaseUid || "not-signed-in",
+    ownerKey,
+    "9 화면에 apply() 호출 여부": "restoreSavedEyeImagesForCurrentUser 시작"
+  });
 
   const records = await Promise.all([
     getStoredEyeRecord(ownerKey, "right"),
     getStoredEyeRecord(ownerKey, "left")
   ]);
+  console.info("[IRIS apply diagnostics:records]", {
+    "5 rightEyeImage 존재 여부": Boolean(records[0]?.blob),
+    "6 leftEyeImage 존재 여부": Boolean(records[1]?.blob),
+    rightRecordId: eyePhotoRecordId(ownerKey, "right"),
+    leftRecordId: eyePhotoRecordId(ownerKey, "left"),
+    source: "IndexedDB irisMappingPhotoStore/eyePhotos"
+  });
 
   for (const [index, eyeKey] of ["right", "left"].entries()) {
     const record = records[index];
@@ -1093,6 +1106,17 @@ async function restoreSavedEyeImagesForCurrentUser() {
       if (remoteMarkers.length) {
         eye.markers = restoreEyeMarkers(eye, remoteMarkers);
       }
+      console.info("[IRIS apply diagnostics:eye]", {
+        eyeKey,
+        applyCalled: true,
+        fileName: eye.fileName,
+        imageLoaded: Boolean(eye.image),
+        imageNaturalSize: eye.image ? `${eye.image.width}x${eye.image.height}` : "",
+        markerCount: eye.markers.length,
+        geometryRestored,
+        hasSavedDetection,
+        localStorageMarkerKey: eyeMarkerStorageKey(ownerKey, eyeKey)
+      });
       state.eyes[eyeKey] = eye;
     } catch (error) {
       console.warn(`${eyeKey} 홍채 사진 복원에 실패했습니다.`, error);
@@ -1107,6 +1131,19 @@ async function restoreSavedEyeImagesForCurrentUser() {
   renderMarkers();
   renderDetailMap(null);
   draw();
+  const canvasElement = document.querySelector("#irisCanvas");
+  console.info("[IRIS apply diagnostics:done]", {
+    "7 rightEyeMarkers 개수": state.eyes.right.markers.length,
+    "8 leftEyeMarkers 개수": state.eyes.left.markers.length,
+    "9 화면에 apply() 호출 여부": true,
+    "10 apply 후 이미지가 실제 DOM에 들어갔는지": {
+      canvasExists: Boolean(canvasElement),
+      rightEyeInState: Boolean(state.eyes.right.image),
+      leftEyeInState: Boolean(state.eyes.left.image),
+      canvasSize: canvasElement ? `${canvasElement.width}x${canvasElement.height}` : "",
+      activeEye: state.activeEye
+    }
+  });
   logIrisMarkerSync("markers:restored", ownerKey);
 }
 

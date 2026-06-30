@@ -45,6 +45,7 @@ window.IrisFirebase = {
   syncNow,
   testWrite,
   signOut,
+  getMemberProfile,
   debug: () => debugEntries.slice(),
   lastError: () => lastFirebaseError,
   getCurrentUser: () => currentUser
@@ -88,6 +89,7 @@ async function bootFirebase() {
     if (user) console.info("[IRIS Firebase UID]", user.uid, "Firestore path:", `users/${user.uid}`);
     if (!user) return;
     try {
+      await restoreMemberProfileFromFirestore(user.uid, "auth:state");
       await ensureRemoteSnapshotLoaded(user.uid);
       await maybeInitialUploadFromLocal(user.uid, "auth:state");
     } catch (error) {
@@ -171,6 +173,7 @@ async function signInWithPhoneName(name, phone, profile = {}) {
   }
 
   await ensureRemoteSnapshotLoaded(currentUser.uid);
+  await restoreMemberProfileFromFirestore(currentUser.uid, "auth:login");
   await maybeSaveMemberProfileFromLocal(currentUser.uid, phoneKey, { ...profile, name: name || profile.name || "", phone: profile.phone || phoneKey }, "auth:login");
   await maybeInitialUploadFromLocal(currentUser.uid, "auth:login");
   return currentUser;
@@ -344,6 +347,78 @@ async function saveMemberProfile(uid, phone, profile) {
   logStep("firestore:user:write:done", { uid });
 }
 
+async function getMemberProfile(uid = currentUser?.uid) {
+  if (!firebaseReady || !uid) return null;
+  const { doc, getDoc } = firebaseApi.firestoreModule;
+  const ref = doc(db, "users", uid);
+  logStep("firestore:user:read:start", { uid });
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    logStep("firestore:user:read:empty", { uid });
+    console.info("[IRIS Firebase member]", {
+      uid,
+      firestorePath: `users/${uid}`,
+      exists: false
+    });
+    return null;
+  }
+  const profile = snap.data() || {};
+  logStep("firestore:user:read:done", {
+    uid,
+    keys: Object.keys(profile)
+  });
+  console.info("[IRIS Firebase member]", {
+    uid,
+    firestorePath: `users/${uid}`,
+    exists: true,
+    keys: Object.keys(profile),
+    name: profile.name || "",
+    phone: maskPhone(profile.phone || ""),
+    email: profile.email || ""
+  });
+  return profile;
+}
+
+async function restoreMemberProfileFromFirestore(uid, reason) {
+  const profile = await getMemberProfile(uid);
+  if (!profile) return false;
+  const phone = normalizePhone(profile.phone || localStorage.getItem(SESSION_KEY));
+  if (!phone) return false;
+
+  applyingRemoteSnapshot = true;
+  try {
+    const users = readJson(USERS_KEY, {});
+    const previous = users[phone] || {};
+    users[phone] = {
+      ...previous,
+      name: profile.name || previous.name || "",
+      phone: profile.phone || previous.phone || phone,
+      email: profile.email || previous.email || "",
+      address: profile.address || previous.address || "",
+      referrer: profile.referrer || previous.referrer || "",
+      memberNo: profile.memberNo || previous.memberNo || "",
+      joinedAt: profile.joinedAt || previous.joinedAt || previous.createdAt || "",
+      syncedFromFirestore: true
+    };
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    localStorage.setItem(SESSION_KEY, phone);
+  } finally {
+    applyingRemoteSnapshot = false;
+  }
+
+  console.info("[IRIS Firebase member restore success]", {
+    uid,
+    reason,
+    phone: maskPhone(phone),
+    restoredFields: ["name", "phone", "email"],
+    localStorageRole: "cache"
+  });
+  window.dispatchEvent(new CustomEvent("irisMemberProfileRestored", {
+    detail: { uid, phone }
+  }));
+  return true;
+}
+
 async function maybeSaveMemberProfileFromLocal(uid, phone, profile, reason) {
   if (!firebaseReady || !uid) return;
   const { doc, getDoc } = firebaseApi.firestoreModule;
@@ -372,6 +447,11 @@ async function loadRemoteSnapshot(uid) {
   const { doc, getDoc } = firebaseApi.firestoreModule;
   const ref = doc(db, "users", uid, "sync", "localStorage");
   logStep("firestore:snapshot:read:start", { uid });
+  console.info("[IRIS Firebase restore diagnostics]", {
+    "1 Firebase Auth uid": uid,
+    "2 Firestore 읽기 시작": true,
+    firestorePath: `users/${uid}/sync/localStorage`
+  });
   const snap = await getDoc(ref);
   if (!snap.exists()) {
     logStep("firestore:snapshot:read:empty", { uid });
@@ -381,12 +461,24 @@ async function loadRemoteSnapshot(uid) {
       success: true,
       hasData: false
     });
+    console.info("[IRIS Firebase raw JSON]", null);
+    console.info("[IRIS Firebase restore diagnostics]", {
+      "1 Firebase Auth uid": uid,
+      "2 Firestore 읽기 시작": true,
+      "3 Firestore 문서 존재 여부": false,
+      "4 읽어온 문서의 key 목록": [],
+      "5 rightEyeImage 존재 여부": false,
+      "6 leftEyeImage 존재 여부": false,
+      "7 rightEyeMarkers 개수": 0,
+      "8 leftEyeMarkers 개수": 0
+    });
     remoteSnapshotMeta = { uid, hasData: false, keyCount: 0 };
     remoteSnapshotLoadedForUid = uid;
     return;
   }
 
   const data = snap.data()?.data || {};
+  const snapshotSummary = summarizeRemoteSnapshot(data);
   if (!Object.keys(data).length) {
     logStep("firestore:snapshot:read:no-keys", { uid });
     console.info("[IRIS Firebase read]", {
@@ -395,6 +487,17 @@ async function loadRemoteSnapshot(uid) {
       success: true,
       hasData: false,
       keyCount: 0
+    });
+    console.info("[IRIS Firebase raw JSON]", data);
+    console.info("[IRIS Firebase restore diagnostics]", {
+      "1 Firebase Auth uid": uid,
+      "2 Firestore 읽기 시작": true,
+      "3 Firestore 문서 존재 여부": true,
+      "4 읽어온 문서의 key 목록": [],
+      "5 rightEyeImage 존재 여부": false,
+      "6 leftEyeImage 존재 여부": false,
+      "7 rightEyeMarkers 개수": 0,
+      "8 leftEyeMarkers 개수": 0
     });
     remoteSnapshotMeta = { uid, hasData: false, keyCount: 0 };
     remoteSnapshotLoadedForUid = uid;
@@ -407,6 +510,18 @@ async function loadRemoteSnapshot(uid) {
     success: true,
     hasData: true,
     keyCount: Object.keys(data).length
+  });
+  console.info("[IRIS Firebase raw JSON]", data);
+  console.info("[IRIS Firebase restore diagnostics]", {
+    "1 Firebase Auth uid": uid,
+    "2 Firestore 읽기 시작": true,
+    "3 Firestore 문서 존재 여부": true,
+    "4 읽어온 문서의 key 목록": snapshotSummary.keys,
+    "5 rightEyeImage 존재 여부": snapshotSummary.rightEyeImageExists,
+    "6 leftEyeImage 존재 여부": snapshotSummary.leftEyeImageExists,
+    "7 rightEyeMarkers 개수": snapshotSummary.rightEyeMarkersCount,
+    "8 leftEyeMarkers 개수": snapshotSummary.leftEyeMarkersCount,
+    note: "이미지는 현재 Firestore가 아니라 IndexedDB eyePhotos에서 화면 적용 여부를 추가 확인합니다."
   });
   console.info("[IRIS Firebase restore]", {
     firestorePath: `users/${uid}/sync/localStorage`,
@@ -449,6 +564,32 @@ async function loadRemoteSnapshot(uid) {
 
 function hasRemoteSnapshotData(uid) {
   return Boolean(remoteSnapshotMeta && remoteSnapshotMeta.uid === uid && remoteSnapshotMeta.hasData);
+}
+
+function summarizeRemoteSnapshot(data) {
+  const keys = Object.keys(data || {});
+  const phone = normalizePhone(data?.[SESSION_KEY] || "");
+  const rightMarkers = parseJsonValue(data?.[`${EYE_MARKERS_KEY_PREFIX}:${phone}:right`]) || [];
+  const leftMarkers = parseJsonValue(data?.[`${EYE_MARKERS_KEY_PREFIX}:${phone}:left`]) || [];
+  return {
+    keys,
+    rightEyeImageExists: Boolean(findNestedValueByNames(data, ["rightEyeImage", "rightImage", "rightEyePhoto", "rightPhoto"])),
+    leftEyeImageExists: Boolean(findNestedValueByNames(data, ["leftEyeImage", "leftImage", "leftEyePhoto", "leftPhoto"])),
+    rightEyeMarkersCount: Array.isArray(rightMarkers) ? rightMarkers.length : 0,
+    leftEyeMarkersCount: Array.isArray(leftMarkers) ? leftMarkers.length : 0
+  };
+}
+
+function findNestedValueByNames(value, names, depth = 0) {
+  if (!value || typeof value !== "object" || depth > 4) return null;
+  for (const name of names) {
+    if (Object.prototype.hasOwnProperty.call(value, name) && value[name]) return value[name];
+  }
+  for (const child of Object.values(value)) {
+    const found = findNestedValueByNames(child, names, depth + 1);
+    if (found) return found;
+  }
+  return null;
 }
 
 async function testWrite() {
