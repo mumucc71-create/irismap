@@ -29,6 +29,8 @@ let db;
 let firebaseApi;
 let syncTimer = null;
 let applyingRemoteSnapshot = false;
+let remoteSnapshotLoadedForUid = "";
+let remoteSnapshotPromise = null;
 let lastFirebaseError = null;
 const debugEntries = [];
 
@@ -81,7 +83,7 @@ async function bootFirebase() {
     logStep("auth:state", { uid: user?.uid || null, email: user?.email || null });
     if (!user) return;
     try {
-      await loadRemoteSnapshot(user.uid);
+      await ensureRemoteSnapshotLoaded(user.uid);
       await syncNow();
     } catch (error) {
       logError("auth:state:sync-error", error);
@@ -163,6 +165,7 @@ async function signInWithPhoneName(name, phone, profile = {}) {
     await updateProfile(currentUser, { displayName: name || profile.name }).catch(() => {});
   }
 
+  await ensureRemoteSnapshotLoaded(currentUser.uid);
   await saveMemberProfile(currentUser.uid, phoneKey, { ...profile, name: name || profile.name || "", phone: profile.phone || phoneKey });
   await syncNow();
   return currentUser;
@@ -185,6 +188,7 @@ function scheduleSync() {
 
 async function syncNow() {
   if (!firebaseReady || !currentUser) return;
+  await ensureRemoteSnapshotLoaded(currentUser.uid);
   const snapshot = collectLocalStorageSnapshot();
   const { doc, setDoc, serverTimestamp } = firebaseApi.firestoreModule;
   const uid = currentUser.uid;
@@ -235,6 +239,17 @@ async function syncStructuredDocs(uid, snapshot) {
   logStep("firestore:structured:write:done", { uid });
 }
 
+async function ensureRemoteSnapshotLoaded(uid) {
+  if (!uid) return;
+  if (remoteSnapshotLoadedForUid === uid) return;
+  if (!remoteSnapshotPromise) {
+    remoteSnapshotPromise = loadRemoteSnapshot(uid).finally(() => {
+      remoteSnapshotPromise = null;
+    });
+  }
+  await remoteSnapshotPromise;
+}
+
 async function saveMemberProfile(uid, phone, profile) {
   if (!firebaseReady || !uid) return;
   const { doc, setDoc, serverTimestamp } = firebaseApi.firestoreModule;
@@ -259,12 +274,14 @@ async function loadRemoteSnapshot(uid) {
   const snap = await getDoc(ref);
   if (!snap.exists()) {
     logStep("firestore:snapshot:read:empty", { uid });
+    remoteSnapshotLoadedForUid = uid;
     return;
   }
 
   const data = snap.data()?.data || {};
   if (!Object.keys(data).length) {
     logStep("firestore:snapshot:read:no-keys", { uid });
+    remoteSnapshotLoadedForUid = uid;
     return;
   }
   logStep("firestore:snapshot:read:done", { uid, keyCount: Object.keys(data).length });
@@ -281,6 +298,7 @@ async function loadRemoteSnapshot(uid) {
   } finally {
     applyingRemoteSnapshot = false;
   }
+  remoteSnapshotLoadedForUid = uid;
 
   if (!sessionStorage.getItem("irisFirebaseSnapshotLoaded")) {
     sessionStorage.setItem("irisFirebaseSnapshotLoaded", "1");

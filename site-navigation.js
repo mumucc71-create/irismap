@@ -4,8 +4,8 @@
   if (document.documentElement.classList.contains("embedded-universe")) return;
 
   const SESSION_KEY = "irisMappingSession";
-  const FIREBASE_CONFIG_SCRIPT = "firebase-config.js?v=20260630-firebase-key-1";
-  const FIREBASE_SYNC_SCRIPT = "firebase-sync.js?v=20260630-firebase-key-1";
+  const FIREBASE_CONFIG_SCRIPT = "firebase-config.js?v=20260630-firebase-sync-2";
+  const FIREBASE_SYNC_SCRIPT = "firebase-sync.js?v=20260630-firebase-sync-2";
   const ROUTES = {
     home: { label: "홈", href: "index.html" },
     health: { label: "라이프진단", href: "health.html" },
@@ -42,7 +42,9 @@
   }
 
   function loggedIn() {
-    return Boolean(String(localStorage.getItem(SESSION_KEY) || "").replace(/\D/g, ""));
+    const sessionPhone = String(localStorage.getItem(SESSION_KEY) || "").replace(/\D/g, "");
+    const appIsOpen = Boolean(document.querySelector("#appShell:not([hidden])"));
+    return Boolean(sessionPhone || appIsOpen);
   }
 
   function requiresLogin(file) {
@@ -139,6 +141,14 @@
     if (location.hash) requestAnimationFrame(() => document.querySelector(location.hash)?.scrollIntoView({ block: "start" }));
   }
 
+  function renderNavigation(file, activeKey, isLoggedIn) {
+    document.querySelectorAll(".iris-site-nav, .iris-mobile-tabs, .iris-mobile-menu, .iris-page-cta").forEach((element) => element.remove());
+    buildHeader(file, activeKey, isLoggedIn);
+    hideLegacyHomeLinks();
+    buildMobileTabs(activeKey, isLoggedIn);
+    buildPageCta(file);
+  }
+
   function init() {
     loadFirebaseSync();
     const file = currentFile();
@@ -150,10 +160,7 @@
       return;
     }
     prepareAnchors(file);
-    buildHeader(file, activeKey, isLoggedIn);
-    hideLegacyHomeLinks();
-    buildMobileTabs(activeKey, isLoggedIn);
-    buildPageCta(file);
+    renderNavigation(file, activeKey, isLoggedIn);
   }
 
   function loadFirebaseSync() {
@@ -173,4 +180,8 @@
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
+  window.addEventListener("irisAuthChanged", () => {
+    const file = currentFile();
+    renderNavigation(file, PAGE_KEYS[file] || "", loggedIn());
+  });
 })();
