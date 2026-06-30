@@ -115,6 +115,7 @@ const state = {
 const AUTH_USERS_KEY = "irisMappingUsers";
 const AUTH_SESSION_KEY = "irisMappingSession";
 const MAPPING_OVERLAY_KEY_PREFIX = "irisMappingOverlayVisible";
+const IRIS_EYE_MARKERS_KEY_PREFIX = "irisEyeMarkers";
 const EYE_PHOTO_DB_NAME = "irisMappingPhotoStore";
 const EYE_PHOTO_STORE_NAME = "eyePhotos";
 const EYE_PHOTO_DB_VERSION = 1;
@@ -846,6 +847,10 @@ function mappingOverlayStorageKey() {
   return `${MAPPING_OVERLAY_KEY_PREFIX}:${ownerKey}`;
 }
 
+function eyeMarkerStorageKey(ownerKey, eyeKey) {
+  return `${IRIS_EYE_MARKERS_KEY_PREFIX}:${ownerKey}:${eyeKey}`;
+}
+
 function persistMappingOverlayState() {
   try {
     localStorage.setItem(mappingOverlayStorageKey(), state.overlayVisible ? "1" : "0");
@@ -877,8 +882,78 @@ function serializeEyeGeometry(eye) {
     positionLocked: Boolean(eye.positionLocked),
     alignmentSaved: !eye.alignmentMode,
     detection: { ...eye.detection },
-    markers: Array.isArray(eye.markers) ? eye.markers : []
+    markers: serializeEyeMarkers(eye)
   };
+}
+
+function markerPositionRatio(eye, marker) {
+  const bounds = eye.imageBounds || {};
+  const width = Number(bounds.width) || VIEW_WIDTH;
+  const height = Number(bounds.height) || VIEW_HEIGHT;
+  const baseX = Number(bounds.x) || 0;
+  const baseY = Number(bounds.y) || 0;
+  return {
+    xRatio: Number.isFinite(marker?.xRatio) ? marker.xRatio : clamp((Number(marker?.x || 0) - baseX) / width, 0, 1),
+    yRatio: Number.isFinite(marker?.yRatio) ? marker.yRatio : clamp((Number(marker?.y || 0) - baseY) / height, 0, 1)
+  };
+}
+
+function serializeEyeMarkers(eye) {
+  return (Array.isArray(eye.markers) ? eye.markers : []).map((marker) => {
+    const ratios = markerPositionRatio(eye, marker);
+    return {
+      ...marker,
+      xRatio: Number(ratios.xRatio.toFixed(6)),
+      yRatio: Number(ratios.yRatio.toFixed(6))
+    };
+  });
+}
+
+function restoreEyeMarkers(eye, markers) {
+  return (Array.isArray(markers) ? markers : []).map((marker) => {
+    const restored = { ...marker };
+    if (Number.isFinite(restored.xRatio) && Number.isFinite(restored.yRatio)) {
+      restored.x = Math.round((Number(eye.imageBounds?.x) || 0) + restored.xRatio * (Number(eye.imageBounds?.width) || VIEW_WIDTH));
+      restored.y = Math.round((Number(eye.imageBounds?.y) || 0) + restored.yRatio * (Number(eye.imageBounds?.height) || VIEW_HEIGHT));
+    } else {
+      const ratios = markerPositionRatio(eye, restored);
+      restored.xRatio = Number(ratios.xRatio.toFixed(6));
+      restored.yRatio = Number(ratios.yRatio.toFixed(6));
+    }
+    return restored;
+  });
+}
+
+function persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye) {
+  if (!ownerKey) return;
+  const key = eyeMarkerStorageKey(ownerKey, eyeKey);
+  const markers = serializeEyeMarkers(eye);
+  localStorage.setItem(key, JSON.stringify(markers));
+  logIrisMarkerSync("markers:saved", ownerKey);
+}
+
+function readEyeMarkersFromLocalStorage(ownerKey, eyeKey) {
+  if (!ownerKey) return [];
+  try {
+    return JSON.parse(localStorage.getItem(eyeMarkerStorageKey(ownerKey, eyeKey)) || "[]");
+  } catch (_) {
+    return [];
+  }
+}
+
+function logIrisMarkerSync(context, ownerKey = currentPhotoOwnerKey()) {
+  const uid = window.IrisFirebase?.getCurrentUser?.()?.uid || "";
+  console.info("[IRIS marker sync]", context, {
+    firebaseUid: uid || "not-signed-in",
+    firestoreUserPath: uid ? `users/${uid}` : "",
+    photoStore: "IndexedDB irisMappingPhotoStore/eyePhotos",
+    rightPhotoRecord: eyePhotoRecordId(ownerKey || "guest", "right"),
+    leftPhotoRecord: eyePhotoRecordId(ownerKey || "guest", "left"),
+    rightEyeMarkersKey: ownerKey ? eyeMarkerStorageKey(ownerKey, "right") : "",
+    leftEyeMarkersKey: ownerKey ? eyeMarkerStorageKey(ownerKey, "left") : "",
+    rightEyeMarkersCount: state.eyes.right.markers.length,
+    leftEyeMarkersCount: state.eyes.left.markers.length
+  });
 }
 
 async function persistEyeState(eyeKey) {
@@ -891,6 +966,7 @@ async function persistEyeState(eyeKey) {
   try {
     if (!eye.image || !eye.sourceBlob) {
       await runEyePhotoStore("readwrite", (store) => store.delete(id));
+      persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
       return;
     }
 
@@ -904,6 +980,7 @@ async function persistEyeState(eyeKey) {
       geometry: serializeEyeGeometry(eye),
       updatedAt: new Date().toISOString()
     }));
+    persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
   } catch (error) {
     console.warn("홍채 사진을 저장하지 못했습니다.", error);
   }
@@ -953,7 +1030,7 @@ function restoreEyeGeometry(eye, geometry) {
   eye.detection = geometry.detection && Number.isFinite(geometry.detection.alignmentConfidence)
     ? { ...geometry.detection }
     : { pupilConfidence: 0, irisConfidence: 0, alignmentConfidence: 0, status: "재검출 필요", manual: false };
-  eye.markers = Array.isArray(geometry.markers) ? geometry.markers : [];
+  eye.markers = restoreEyeMarkers(eye, geometry.markers);
   return true;
 }
 
@@ -982,6 +1059,10 @@ async function restoreSavedEyeImagesForCurrentUser() {
         resetAndDetectEye(eye, eyeKey);
         normalizeEyeView(eye, NORMALIZED_IRIS_RADIUS);
       }
+      const remoteMarkers = readEyeMarkersFromLocalStorage(ownerKey, eyeKey);
+      if (remoteMarkers.length) {
+        eye.markers = restoreEyeMarkers(eye, remoteMarkers);
+      }
       state.eyes[eyeKey] = eye;
     } catch (error) {
       console.warn(`${eyeKey} 홍채 사진 복원에 실패했습니다.`, error);
@@ -996,6 +1077,7 @@ async function restoreSavedEyeImagesForCurrentUser() {
   renderMarkers();
   renderDetailMap(null);
   draw();
+  logIrisMarkerSync("markers:restored", ownerKey);
 }
 
 function clearEyeImagesFromMemory() {
@@ -2041,6 +2123,7 @@ function getClockTimeLabel(clockAngle, hour) {
 function createManualObservationMarker(point, match) {
   const pattern = state.manualObservationType || "DOT";
   const strength = state.manualObservationStrength || "중";
+  const ratios = markerPositionRatio(currentEye(), point);
   return {
     id: createObservationId(),
     type: manualObservationLabels[pattern] || "점",
@@ -2048,6 +2131,8 @@ function createManualObservationMarker(point, match) {
     strength,
     x: Math.round(point.x),
     y: Math.round(point.y),
+    xRatio: Number(ratios.xRatio.toFixed(6)),
+    yRatio: Number(ratios.yRatio.toFixed(6)),
     clockTime: match.clockTime,
     radiusPercent: Math.round(match.radiusRatio * 100),
     ...match

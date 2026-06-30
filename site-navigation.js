@@ -4,8 +4,8 @@
   if (document.documentElement.classList.contains("embedded-universe")) return;
 
   const SESSION_KEY = "irisMappingSession";
-  const FIREBASE_CONFIG_SCRIPT = "firebase-config.js?v=20260630-firebase-sync-2";
-  const FIREBASE_SYNC_SCRIPT = "firebase-sync.js?v=20260630-firebase-sync-2";
+  const FIREBASE_CONFIG_SCRIPT = "firebase-config.js?v=20260630-marker-sync-1";
+  const FIREBASE_SYNC_SCRIPT = "firebase-sync.js?v=20260630-marker-sync-1";
   const ROUTES = {
     home: { label: "홈", href: "index.html" },
     health: { label: "라이프진단", href: "health.html" },

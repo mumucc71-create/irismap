@@ -2,6 +2,7 @@ const FIREBASE_SDK_VERSION = "10.12.5";
 const CONFIG = window.IRIS_FIREBASE_CONFIG || {};
 const SESSION_KEY = "irisMappingSession";
 const USERS_KEY = "irisMappingUsers";
+const EYE_MARKERS_KEY_PREFIX = "irisEyeMarkers";
 const MAX_VALUE_BYTES = 850000;
 const SYNC_DEBOUNCE_MS = 900;
 
@@ -19,7 +20,8 @@ const structuredKeys = {
   cart: "irisShoppingCart",
   orders: "irisShoppingOrders",
   consultations: "irisShoppingConsultRequests",
-  products: "irisProductDB"
+  products: "irisProductDB",
+  eyeMarkersPrefix: EYE_MARKERS_KEY_PREFIX
 };
 
 let firebaseReady = false;
@@ -81,6 +83,7 @@ async function bootFirebase() {
   authModule.onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     logStep("auth:state", { uid: user?.uid || null, email: user?.email || null });
+    if (user) console.info("[IRIS Firebase UID]", user.uid, "Firestore path:", `users/${user.uid}`);
     if (!user) return;
     try {
       await ensureRemoteSnapshotLoaded(user.uid);
@@ -212,10 +215,25 @@ async function syncStructuredDocs(uid, snapshot) {
   if (profile) await saveMemberProfile(uid, phone, profile);
 
   logStep("firestore:structured:write:start", { uid });
+  const eyeMarkers = collectEyeMarkersFromSnapshot(snapshot, phone);
   await setDoc(doc(db, "users", uid, "irisResults", "latest"), {
     updatedAt: serverTimestamp(),
     result: parseJsonValue(snapshot[structuredKeys.irisResult])
   }, { merge: true });
+
+  await setDoc(doc(db, "users", uid, "irisMarkers", "latest"), {
+    updatedAt: serverTimestamp(),
+    storageKeys: eyeMarkers.storageKeys,
+    leftEyeMarkers: eyeMarkers.left,
+    rightEyeMarkers: eyeMarkers.right
+  }, { merge: true });
+  console.info("[IRIS Firebase markers]", {
+    firestorePath: `users/${uid}/irisMarkers/latest`,
+    leftEyeMarkersKey: eyeMarkers.storageKeys.left,
+    rightEyeMarkersKey: eyeMarkers.storageKeys.right,
+    leftCount: eyeMarkers.left.length,
+    rightCount: eyeMarkers.right.length
+  });
 
   await setDoc(doc(db, "users", uid, "cart", "current"), {
     updatedAt: serverTimestamp(),
@@ -237,6 +255,20 @@ async function syncStructuredDocs(uid, snapshot) {
     items: parseJsonValue(snapshot[structuredKeys.products]) || []
   }, { merge: true });
   logStep("firestore:structured:write:done", { uid });
+}
+
+function collectEyeMarkersFromSnapshot(snapshot, phone) {
+  const owner = phone || normalizePhone(snapshot[SESSION_KEY] || "");
+  const rightKey = owner ? `${EYE_MARKERS_KEY_PREFIX}:${owner}:right` : "";
+  const leftKey = owner ? `${EYE_MARKERS_KEY_PREFIX}:${owner}:left` : "";
+  return {
+    storageKeys: {
+      right: rightKey,
+      left: leftKey
+    },
+    right: parseJsonValue(snapshot[rightKey]) || [],
+    left: parseJsonValue(snapshot[leftKey]) || []
+  };
 }
 
 async function ensureRemoteSnapshotLoaded(uid) {
@@ -285,6 +317,10 @@ async function loadRemoteSnapshot(uid) {
     return;
   }
   logStep("firestore:snapshot:read:done", { uid, keyCount: Object.keys(data).length });
+  console.info("[IRIS Firebase restore]", {
+    firestorePath: `users/${uid}/sync/localStorage`,
+    restoredKeys: Object.keys(data).filter((key) => key === SESSION_KEY || key.startsWith(EYE_MARKERS_KEY_PREFIX) || key === "irisReadingResult")
+  });
 
   applyingRemoteSnapshot = true;
   try {
