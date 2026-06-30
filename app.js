@@ -41,6 +41,9 @@ const saveIrisSessionButton = document.querySelector("#saveIrisSessionButton");
 const loadIrisSessionButton = document.querySelector("#loadIrisSessionButton");
 const resetIrisPointsButton = document.querySelector("#resetIrisPointsButton");
 const largeIrisViewButton = document.querySelector("#largeIrisViewButton");
+const largeRightEyeButton = document.querySelector("#largeRightEyeButton");
+const largeLeftEyeButton = document.querySelector("#largeLeftEyeButton");
+const eraserModeButton = document.querySelector("#eraserModeButton");
 const irisSaveStatus = document.querySelector("#irisSaveStatus");
 const irisSaveListPanel = document.querySelector("#irisSaveListPanel");
 const irisSaveList = document.querySelector("#irisSaveList");
@@ -113,6 +116,9 @@ const state = {
   activeEye: "right",
   chartImage: null,
   stackedLayout: false,
+  largeView: false,
+  largeEyeKey: "right",
+  eraserMode: false,
   overlayVisible: false,
   manualObservationType: "DOT",
   manualObservationStrength: "중",
@@ -192,7 +198,7 @@ healthQuestionnaireButton?.addEventListener("click", () => {
 
 function updateCanvasLayout() {
   const shouldStack = false;
-  const nextWidth = VIEW_WIDTH * 2;
+  const nextWidth = state.largeView ? VIEW_WIDTH : VIEW_WIDTH * 2;
   const nextHeight = VIEW_HEIGHT;
 
   state.stackedLayout = shouldStack;
@@ -674,8 +680,20 @@ saveIrisSessionButton?.addEventListener("click", () => {
   saveCurrentIrisSnapshot();
 });
 
-loadIrisSessionButton?.addEventListener("click", () => {
-  toggleIrisSaveList(true);
+loadIrisSessionButton?.addEventListener("click", async () => {
+  if (!window.IrisFirebase?.getCurrentUser?.()?.uid) {
+    setIrisSaveStatus("로그인 후 불러올 수 있습니다.", true);
+    return;
+  }
+  try {
+    setIrisSaveStatus("Firestore에서 홍채사진과 점을 불러오는 중입니다...");
+    await restoreSavedEyeImagesForCurrentUser({ preferFirebase: true });
+    setIrisSaveStatus("동기화된 홍채사진과 점을 불러왔습니다.");
+    await toggleIrisSaveList(true);
+  } catch (error) {
+    console.warn("홍채사진 동기화 불러오기 실패", error);
+    setIrisSaveStatus("동기화 불러오기에 실패했습니다.", true);
+  }
 });
 
 closeIrisSaveListButton?.addEventListener("click", () => {
@@ -687,8 +705,20 @@ resetIrisPointsButton?.addEventListener("click", () => {
 });
 
 largeIrisViewButton?.addEventListener("click", () => {
-  document.body.classList.toggle("iris-large-mode");
-  largeIrisViewButton.textContent = document.body.classList.contains("iris-large-mode") ? "크게 보기 닫기" : "크게 보기";
+  setLargeIrisView(!state.largeView, state.largeEyeKey || state.activeEye || "right");
+});
+
+largeRightEyeButton?.addEventListener("click", () => {
+  setLargeIrisView(true, "right");
+});
+
+largeLeftEyeButton?.addEventListener("click", () => {
+  setLargeIrisView(true, "left");
+});
+
+eraserModeButton?.addEventListener("click", () => {
+  state.eraserMode = !state.eraserMode;
+  updateEraserModeButton();
 });
 
 irisSaveList?.addEventListener("click", (event) => {
