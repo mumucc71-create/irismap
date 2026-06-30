@@ -6,7 +6,7 @@
   <title>마이페이지 | IRIS MAPPING LAB</title>
   <link rel="stylesheet" href="site-navigation.css?v=20260623-fantasy-bg-1">
   <style>
-    :root{color-scheme:dark;--line:#294858;--text:#f5f7f7;--muted:#9eafb8;--cyan:#37d7d0;--gold:#e7b84f}*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#07111a,#030609);color:var(--text);font-family:Arial,"Noto Sans KR",sans-serif}.page{width:min(1050px,100%);margin:auto;padding:28px 18px}.brand{color:var(--cyan);font-size:13px;font-weight:900}h1{margin:8px 0 24px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card{padding:20px;border:1px solid var(--line);border-radius:8px;background:#0a141e}.card h2{margin:0 0 12px;color:var(--gold);font-size:19px}.card p{color:var(--muted);line-height:1.65}.vip-card{border-color:#8a6a28;background:linear-gradient(135deg,rgba(111,75,17,.25),#0a141e)}.vip-state{display:inline-block;padding:7px 10px;border:1px solid #8a6a28;border-radius:6px;color:#ffe39b;font-weight:900}.links{display:flex;flex-wrap:wrap;gap:8px}.links a{padding:11px 13px;border:1px solid var(--line);border-radius:7px;color:var(--text);text-decoration:none;font-weight:800}.empty{color:var(--muted)}@media(max-width:700px){.grid{grid-template-columns:1fr}.page{padding:20px 12px}}
+    :root{color-scheme:dark;--line:#294858;--text:#f5f7f7;--muted:#9eafb8;--cyan:#37d7d0;--gold:#e7b84f}*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#07111a,#030609);color:var(--text);font-family:Arial,"Noto Sans KR",sans-serif}.page{width:min(1050px,100%);margin:auto;padding:28px 18px}.brand{color:var(--cyan);font-size:13px;font-weight:900}h1{margin:8px 0 24px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card{padding:20px;border:1px solid var(--line);border-radius:8px;background:#0a141e}.card h2{margin:0 0 12px;color:var(--gold);font-size:19px}.card p{color:var(--muted);line-height:1.65}.vip-card{border-color:#8a6a28;background:linear-gradient(135deg,rgba(111,75,17,.25),#0a141e)}.vip-state{display:inline-block;padding:7px 10px;border:1px solid #8a6a28;border-radius:6px;color:#ffe39b;font-weight:900}.links{display:flex;flex-wrap:wrap;gap:8px}.links a{padding:11px 13px;border:1px solid var(--line);border-radius:7px;color:var(--text);text-decoration:none;font-weight:800}.danger-card{border-color:#7f3d3d}.danger-button{width:100%;margin-top:8px;padding:12px 14px;border:1px solid #b95d5d;border-radius:7px;background:#2b1010;color:#fff;font-weight:900;cursor:pointer}.danger-button:disabled{opacity:.55;cursor:wait}.reset-status{min-height:22px;margin-top:10px;color:#37d7d0;font-weight:800}.empty{color:var(--muted)}@media(max-width:700px){.grid{grid-template-columns:1fr}.page{padding:20px 12px}}
   </style>
 </head>
 <body>
@@ -19,9 +19,12 @@
       <article class="card vip-card"><h2>보험 VIP 혜택</h2><div id="vipMembership"></div></article>
       <article class="card"><h2>결과 바로가기</h2><div class="links"><a href="final-report.html">총결과</a><a href="final-report.html#life-diagnosis">라이프진단</a><a href="universe.html">유니버스</a></div></article>
       <article class="card"><h2>운영자 관리</h2><p>상품 등록과 쇼핑몰 관리는 운영자 비밀번호 입력 후 들어갈 수 있습니다.</p><div class="links"><a href="admin.html">관리자 페이지</a></div></article>
+      <article class="card danger-card"><h2>테스트 데이터 초기화</h2><p>현재 로그인한 Firebase 계정의 테스트 데이터만 삭제합니다. Firestore, localStorage, sessionStorage를 비우고 로그아웃합니다.</p><button id="resetCurrentUserDataButton" class="danger-button" type="button">현재 계정 초기화</button><div id="resetCurrentUserDataStatus" class="reset-status" aria-live="polite"></div></article>
     </section>
   </main>
   <script src="site-navigation.js?v=20260630-marker-sync-1"></script>
+  <script src="firebase-config.js?v=20260630-reset-1"></script>
+  <script src="firebase-sync.js?v=20260630-reset-1"></script>
   <script>
     const phone=String(localStorage.getItem("irisMappingSession")||"").replace(/\D/g,"");
     const has=(key)=>Boolean(localStorage.getItem(key));
@@ -47,6 +50,24 @@
     }else{
       vipTarget.innerHTML='<p class="empty">유니버스 PDF 업로드 완료 후 VIP 혜택이 활성화됩니다.</p><div class="links"><a href="universe.html">PDF 업로드</a></div>';
     }
+    const resetButton=document.querySelector("#resetCurrentUserDataButton");
+    const resetStatus=document.querySelector("#resetCurrentUserDataStatus");
+    resetButton?.addEventListener("click",async()=>{
+      const user=window.IrisFirebase?.getCurrentUser?.();
+      if(!user?.uid){resetStatus.textContent="Firebase 로그인 상태를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.";return;}
+      if(!confirm("현재 로그인한 테스트 계정의 Firestore와 브라우저 저장 데이터를 모두 초기화할까요?"))return;
+      resetButton.disabled=true;
+      resetStatus.textContent="초기화 중입니다.";
+      try{
+        const result=await window.IrisFirebase.resetCurrentUserData();
+        alert(result?.message||"초기화 완료");
+        location.replace("index.html");
+      }catch(error){
+        console.error("[IRIS reset failed]",error);
+        resetStatus.textContent=error?.message||"초기화에 실패했습니다.";
+        resetButton.disabled=false;
+      }
+    });
   </script>
 </body>
 </html>

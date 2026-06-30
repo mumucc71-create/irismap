@@ -46,6 +46,7 @@ window.IrisFirebase = {
   testWrite,
   signOut,
   getMemberProfile,
+  resetCurrentUserData,
   debug: () => debugEntries.slice(),
   lastError: () => lastFirebaseError,
   getCurrentUser: () => currentUser
@@ -182,6 +183,75 @@ async function signInWithPhoneName(name, phone, profile = {}) {
 async function signOut() {
   if (!firebaseReady) return;
   await firebaseApi.authModule.signOut(auth);
+}
+
+async function resetCurrentUserData() {
+  if (!firebaseReady) throw new Error("Firebase가 아직 준비되지 않았습니다.");
+  if (!currentUser?.uid) throw new Error("현재 로그인한 Firebase 사용자가 없습니다.");
+
+  const uid = currentUser.uid;
+  const { doc, deleteDoc } = firebaseApi.firestoreModule;
+  logStep("reset:start", { uid });
+
+  clearTimeout(syncTimer);
+  syncTimer = null;
+  applyingRemoteSnapshot = true;
+
+  const documentRefs = [
+    doc(db, "users", uid, "sync", "localStorage"),
+    doc(db, "users", uid, "irisResults", "latest"),
+    doc(db, "users", uid, "irisMarkers", "latest"),
+    doc(db, "users", uid, "cart", "current"),
+    doc(db, "users", uid, "orders", "history"),
+    doc(db, "users", uid, "consultations", "history"),
+    doc(db, "users", uid, "products", "operatorCatalog"),
+    doc(db, "users", uid, "debug", "lastWrite")
+  ];
+
+  for (const ref of documentRefs) {
+    await deleteDoc(ref).catch((error) => {
+      logError("reset:delete-child:error", error);
+    });
+  }
+  await deleteDoc(doc(db, "users", uid)).catch((error) => {
+    logError("reset:delete-user:error", error);
+  });
+
+  await deleteIndexedDb(EYE_PHOTO_DB_NAME);
+
+  remoteSnapshotLoadedForUid = "";
+  remoteSnapshotPromise = null;
+  remoteSnapshotMeta = null;
+  firestoreWriteUnlockedForUid = "";
+
+  localStorage.clear();
+  sessionStorage.clear();
+  await firebaseApi.authModule.signOut(auth);
+  currentUser = null;
+  applyingRemoteSnapshot = false;
+  logStep("reset:done", { uid });
+  console.info("[IRIS Firebase reset]", {
+    uid,
+    firestoreDeleted: true,
+    localStorageCleared: true,
+    sessionStorageCleared: true,
+    signedOut: true,
+    message: "초기화 완료"
+  });
+  return { uid, message: "초기화 완료" };
+}
+
+function deleteIndexedDb(name) {
+  return new Promise((resolve) => {
+    if (!window.indexedDB || !name) {
+      resolve(false);
+      return;
+    }
+    const request = indexedDB.deleteDatabase(name);
+    request.onsuccess = () => resolve(true);
+    request.onerror = () => resolve(false);
+    request.onblocked = () => resolve(false);
+  });
 }
 
 function createAccountPassword(phoneKey) {
