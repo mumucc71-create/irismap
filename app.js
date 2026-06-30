@@ -41,8 +41,10 @@ const saveIrisSessionButton = document.querySelector("#saveIrisSessionButton");
 const loadIrisSessionButton = document.querySelector("#loadIrisSessionButton");
 const resetIrisPointsButton = document.querySelector("#resetIrisPointsButton");
 const largeIrisViewButton = document.querySelector("#largeIrisViewButton");
-const largeRightEyeButton = document.querySelector("#largeRightEyeButton");
-const largeLeftEyeButton = document.querySelector("#largeLeftEyeButton");
+const rightEyeZoomOutButton = document.querySelector("#rightEyeZoomOutButton");
+const rightEyeZoomInButton = document.querySelector("#rightEyeZoomInButton");
+const leftEyeZoomOutButton = document.querySelector("#leftEyeZoomOutButton");
+const leftEyeZoomInButton = document.querySelector("#leftEyeZoomInButton");
 const eraserModeButton = document.querySelector("#eraserModeButton");
 const irisSaveStatus = document.querySelector("#irisSaveStatus");
 const irisSaveListPanel = document.querySelector("#irisSaveListPanel");
@@ -118,6 +120,7 @@ const state = {
   stackedLayout: false,
   largeView: false,
   largeEyeKey: "right",
+  irisViewScale: Number(localStorage.getItem("irisViewScale") || 1),
   eraserMode: false,
   overlayVisible: false,
   manualObservationType: "DOT",
@@ -704,17 +707,23 @@ resetIrisPointsButton?.addEventListener("click", () => {
   resetCurrentIrisPoints();
 });
 
-largeIrisViewButton?.addEventListener("click", () => {
-  setLargeIrisView(!state.largeView, state.largeEyeKey || state.activeEye || "right");
+rightEyeZoomOutButton?.addEventListener("click", () => {
+  zoomIrisView(0.86);
 });
 
-largeRightEyeButton?.addEventListener("click", () => {
-  setLargeIrisView(true, "right");
+rightEyeZoomInButton?.addEventListener("click", () => {
+  zoomIrisView(1.18);
 });
 
-largeLeftEyeButton?.addEventListener("click", () => {
-  setLargeIrisView(true, "left");
+leftEyeZoomOutButton?.addEventListener("click", () => {
+  zoomIrisView(0.86);
 });
+
+leftEyeZoomInButton?.addEventListener("click", () => {
+  zoomIrisView(1.18);
+});
+
+applyIrisViewScale();
 
 eraserModeButton?.addEventListener("click", () => {
   state.eraserMode = !state.eraserMode;
@@ -884,6 +893,21 @@ canvas.addEventListener("click", (event) => {
   if (eye.alignmentMode) return;
 
   const point = { x: hit.x, y: hit.y };
+  if (state.eraserMode) {
+    const removed = eraseMarkerAtPoint(eye, point);
+    if (removed) {
+      renderSelection(null);
+      renderManualObservations();
+      renderManualObservationGuide(null);
+      renderMarkers();
+      renderDetailMap(null);
+      draw();
+      updateUiEnabled();
+      scheduleEyeStatePersistence(state.activeEye);
+    }
+    return;
+  }
+
   const match = resolvePoint(point.x, point.y);
   if (!match) return;
 
@@ -1388,6 +1412,84 @@ function formatIrisSnapshotDate(value) {
 async function dataUrlToBlob(dataUrl) {
   const response = await fetch(dataUrl);
   return response.blob();
+}
+
+function setLargeIrisView(enabled, eyeKey = "right") {
+  state.largeView = Boolean(enabled);
+  state.largeEyeKey = eyeKey === "left" ? "left" : "right";
+  document.body.classList.toggle("iris-large-mode", state.largeView);
+  document.body.classList.toggle("iris-large-right", state.largeView && state.largeEyeKey === "right");
+  document.body.classList.toggle("iris-large-left", state.largeView && state.largeEyeKey === "left");
+  updateCanvasLayout();
+  updateLargeViewButtons();
+  draw();
+}
+
+function updateLargeViewButtons() {
+  if (largeIrisViewButton) {
+    largeIrisViewButton.textContent = state.largeView ? "크게 보기 닫기" : "크게 보기";
+  }
+}
+
+function updateEraserModeButton() {
+  if (!eraserModeButton) return;
+  eraserModeButton.classList.toggle("is-active", state.eraserMode);
+  eraserModeButton.textContent = state.eraserMode ? "지우개 켜짐" : "점 지우개";
+}
+
+function eraseMarkerAtPoint(eye, point) {
+  const markers = Array.isArray(eye.markers) ? eye.markers : [];
+  const hitRadius = state.largeView ? 18 : 13;
+  let nearest = null;
+  for (const marker of markers) {
+    const distance = Math.hypot(Number(marker.x) - point.x, Number(marker.y) - point.y);
+    if (distance <= hitRadius && (!nearest || distance < nearest.distance)) {
+      nearest = { marker, distance };
+    }
+  }
+  if (!nearest) {
+    setIrisSaveStatus("지울 점을 찾지 못했습니다.");
+    return false;
+  }
+  eye.markers = markers.filter((marker) => marker.id !== nearest.marker.id);
+  if (state.selectedObservationId === nearest.marker.id) {
+    state.selectedObservationId = null;
+    eye.selected = null;
+  }
+  setIrisSaveStatus("선택한 점을 지웠습니다.");
+  return true;
+}
+
+function zoomEyePhoto(eyeKey, factor) {
+  const eye = state.eyes[eyeKey];
+  if (!eye?.image) {
+    setIrisSaveStatus(`${eyeKey === "left" ? "좌안" : "우안"} 사진이 없습니다.`);
+    return;
+  }
+  state.activeEye = eyeKey;
+  scaleEyePhotoInFrame(eye, factor);
+  refreshAlignmentConfidence(eye, true);
+  updateActiveEye();
+  syncControls();
+  draw();
+  scheduleEyeStatePersistence(eyeKey);
+}
+
+function zoomIrisView(factor) {
+  state.irisViewScale = clamp((state.irisViewScale || 1) * factor, 1, 2.4);
+  localStorage.setItem("irisViewScale", String(state.irisViewScale));
+  applyIrisViewScale();
+}
+
+function applyIrisViewScale() {
+  if (!canvas) return;
+  const rawScale = Number(state.irisViewScale);
+  const scale = Number.isFinite(rawScale) ? clamp(rawScale, 1, 2.4) : 1;
+  state.irisViewScale = scale;
+  canvas.style.width = `${Math.round(scale * 100)}%`;
+  canvas.style.maxWidth = scale > 1 ? "none" : "";
+  canvas.classList.toggle("is-view-zoomed", scale > 1.01);
+  canvas.parentElement?.classList.toggle("is-view-zoomed", scale > 1.01);
 }
 
 async function restoreSavedEyeImagesForCurrentUser(options = {}) {
@@ -2308,6 +2410,10 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (state.largeView) {
+    drawEyePanel(state.largeEyeKey || state.activeEye || "right", 0, 0);
+    return;
+  }
   if (state.stackedLayout) {
     drawEyePanel("right", 0, 0);
     drawEyePanel("left", 0, VIEW_HEIGHT);
@@ -2830,6 +2936,13 @@ function eventToCanvasPoint(event) {
   const cssY = event.clientY - rect.top;
   const rawX = clamp((cssX / rect.width) * canvas.width, 0, canvas.width);
   const rawY = clamp((cssY / rect.height) * canvas.height, 0, canvas.height);
+  if (state.largeView) {
+    return {
+      eyeKey: state.largeEyeKey || state.activeEye || "right",
+      x: clamp(rawX, 0, VIEW_WIDTH),
+      y: clamp(rawY, 0, VIEW_HEIGHT)
+    };
+  }
   if (state.stackedLayout) {
     const eyeKey = rawY < VIEW_HEIGHT ? "right" : "left";
     return {

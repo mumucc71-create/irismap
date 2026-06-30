@@ -102,6 +102,7 @@
   const operatorSettings = readJson("irisShoppingOperatorSettings", { ingredientReasons:{}, camera:{} });
   const CONSULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSNHb7KjCL6lqu08bCzqFQjeN2B17xj46nQT3LMCZuvUmqiIQZsa8uQswbrJZDzK0/exec";
   const consultScriptUrl = localStorage.getItem("irisConsultGoogleScriptUrl") || CONSULT_SCRIPT_URL;
+  const consultForm = document.querySelector("#consultForm");
   const primary = Array.isArray(analysis.primary) ? analysis.primary : [];
   const goalOptions = [];
   primary.forEach((item) => {
@@ -175,7 +176,9 @@
     return (source.title || '현재 관리 목적') + '과 관련해 우선 비교하는 성분입니다.';
   }
 
-  document.querySelector("#consultForm").addEventListener("submit", async (event) => {
+  prefillConsultForm();
+
+  consultForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget).entries());
     const requests = readJson("irisShoppingConsultRequests", []);
@@ -183,7 +186,8 @@
     localStorage.setItem("irisShoppingConsultRequests", JSON.stringify(requests));
     const sent = await sendConsultRequest(data);
     if (sent) {
-      event.currentTarget.reset();
+      event.currentTarget.elements.memo.value = "";
+      prefillConsultForm();
       document.querySelector("#consultStatus").textContent = "접수되었습니다.";
     } else {
       document.querySelector("#consultStatus").textContent = "전송에 실패했습니다.";
@@ -262,6 +266,43 @@
   }
 
   function readJson(key,fallback){ try{return JSON.parse(localStorage.getItem(key)||"null")??fallback}catch(_){return fallback} }
+  function prefillConsultForm(){
+    if(!consultForm)return;
+    const member = currentMemberFromStorage();
+    const phone = normalizePhone(localStorage.getItem("irisMappingSession") || consultForm.elements.phone.value || member.phone || "");
+    if(member.name && !consultForm.elements.name.value) consultForm.elements.name.value = member.name;
+    if(phone && !consultForm.elements.phone.value) consultForm.elements.phone.value = phone;
+    if(member.email && !consultForm.elements.email.value) consultForm.elements.email.value = member.email;
+  }
+  function currentMemberFromStorage(){
+    const phone = normalizePhone(localStorage.getItem("irisMappingSession") || consultForm?.elements?.phone?.value || "");
+    const savedCustomer = readJson("irisShoppingOrderCustomer", {});
+    if(!phone)return savedCustomer || {};
+    const users = readJson("irisMappingUsers", {});
+    if(users[phone])return { ...savedCustomer, ...users[phone] };
+    const variants = phoneVariants(phone);
+    const matchedUser = Object.entries(users).find(([key,user]) => {
+      const stored = new Set([...phoneVariants(key), ...phoneVariants(user?.phone)]);
+      return variants.some((value) => stored.has(value));
+    })?.[1] || {};
+    return { ...savedCustomer, ...matchedUser };
+  }
+  function normalizePhone(value){
+    let digits=String(value||"").replace(/\D/g,"");
+    if(digits.startsWith("0082"))digits=digits.slice(4);
+    if(digits.startsWith("82"))digits=digits.slice(2);
+    if(digits.length===10&&digits.startsWith("10"))digits=`0${digits}`;
+    return digits;
+  }
+  function phoneVariants(value){
+    const normalized=normalizePhone(value);
+    const withoutLeadingZero=normalized.replace(/^0+/,"");
+    return [normalized, withoutLeadingZero].filter(Boolean);
+  }
+  window.addEventListener("irisMemberProfileRestored", prefillConsultForm);
+  window.addEventListener("storage", (event) => {
+    if(["irisMappingUsers","irisMappingSession"].includes(event.key)) prefillConsultForm();
+  });
   function textMatch(a,b){ const x=normalize(a),y=normalize(b); return x && y && (x.includes(y)||y.includes(x)); }
   function normalize(value){ return String(value||"").toLowerCase().replace(/\s+/g,"").replace(/[·ㆍ/()\-]/g,""); }
   function unique(values){ return [...new Set((values||[]).map((value)=>String(value||"").trim()).filter(Boolean))]; }

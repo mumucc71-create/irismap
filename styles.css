@@ -383,8 +383,84 @@ h2 {
   display: flex;
   justify-content: center;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
   position: relative;
+}
+
+.canvas-wrap.is-view-zoomed {
+  justify-content: flex-start;
+}
+
+.iris-zoom-button {
+  align-items: center;
+  background: rgba(3, 8, 14, 0.76);
+  border: 1px solid rgba(248, 215, 122, 0.75);
+  border-radius: 999px;
+  box-shadow: 0 0 18px rgba(54, 232, 220, 0.18);
+  color: #f8d77a;
+  cursor: pointer;
+  display: grid;
+  font-size: 30px;
+  font-weight: 900;
+  height: 48px;
+  justify-content: center;
+  line-height: 1;
+  min-width: 0;
+  padding: 0;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  z-index: 3;
+}
+
+.iris-zoom-button:hover,
+.iris-zoom-button.is-active {
+  background: linear-gradient(135deg, #d7ae4a, #a8791e);
+  border-color: #f8d77a;
+  color: #071018;
+}
+
+.iris-zoom-right-out {
+  left: calc(25% - min(20vw, 164px));
+}
+
+.iris-zoom-right-in {
+  left: calc(25% + min(20vw, 116px));
+}
+
+.iris-zoom-left-out {
+  left: calc(75% - min(20vw, 164px));
+}
+
+.iris-zoom-left-in {
+  left: calc(75% + min(20vw, 116px));
+}
+
+.iris-large-mode .iris-zoom-right-out,
+.iris-large-mode .iris-zoom-left-out {
+  left: calc(50% - min(42vw, 190px));
+}
+
+.iris-large-mode .iris-zoom-right-in,
+.iris-large-mode .iris-zoom-left-in {
+  left: calc(50% + min(42vw, 154px));
+}
+
+.iris-large-mode .iris-zoom-right-out,
+.iris-large-mode .iris-zoom-right-in,
+.iris-large-mode .iris-zoom-left-out,
+.iris-large-mode .iris-zoom-left-in {
+  display: none;
+}
+
+.iris-large-right .iris-zoom-right-out,
+.iris-large-right .iris-zoom-right-in,
+.iris-large-left .iris-zoom-left-out,
+.iris-large-left .iris-zoom-left-in {
+  display: grid;
 }
 
 .iris-save-panel {
@@ -499,6 +575,12 @@ h2 {
 }
 
 .iris-large-mode #largeIrisViewButton {
+  background: linear-gradient(135deg, #d7ae4a, #a8791e);
+  border-color: #f8d77a;
+  color: #071018;
+}
+
+#eraserModeButton.is-active {
   background: linear-gradient(135deg, #d7ae4a, #a8791e);
   border-color: #f8d77a;
   color: #071018;
