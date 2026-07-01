@@ -23,6 +23,10 @@
     .item-title{display:block;margin-bottom:6px;font-size:18px}
     .muted{color:var(--muted)}
     .price{color:var(--gold);font-weight:900;white-space:nowrap}
+    .item-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+    .quantity-control{display:inline-grid;grid-template-columns:38px 64px 38px;align-items:center;border:1px solid #31566b;border-radius:6px;overflow:hidden;background:#07111b}
+    .quantity-control button{width:38px;min-height:38px;border:0;background:#0c1a28;color:var(--text);font:inherit;font-weight:900;cursor:pointer}
+    .quantity-control input{width:64px;min-height:38px;border:0;border-left:1px solid #31566b;border-right:1px solid #31566b;border-radius:0;text-align:center;background:#050b12;color:var(--gold);font-weight:900}
     .button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 15px;border:1px solid var(--cyan);border-radius:6px;background:var(--cyan);color:#061414;font-weight:900;text-decoration:none;cursor:pointer}
     .ghost{background:#07111b;color:var(--text);border-color:#31566b}
     .danger{background:#12090b;color:#ffd8d8;border-color:#6a3440}
@@ -91,6 +95,7 @@
   const orderScriptUrl = localStorage.getItem(SCRIPT_URL_KEY) || DEFAULT_SCRIPT_URL;
   const orderForm = document.querySelector("#orderForm");
 
+  ensureCartItemIds();
   renderCart();
   restoreOrderCustomer();
 
@@ -101,10 +106,25 @@
 
   document.addEventListener("click", (event) => {
     const remove = event.target.closest("[data-remove]");
-    if (!remove) return;
-    const cart = readCart().filter((item) => item.productId !== remove.dataset.remove);
-    localStorage.setItem(CART_KEY, JSON.stringify(cart));
-    renderCart();
+    const decrease = event.target.closest("[data-qty-decrease]");
+    const increase = event.target.closest("[data-qty-increase]");
+    if (remove) {
+      const cart = readCart().filter((item) => getCartItemId(item) !== remove.dataset.remove);
+      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+      renderCart();
+      return;
+    }
+    if (decrease || increase) {
+      const button = decrease || increase;
+      const productId = button.dataset.qtyDecrease || button.dataset.qtyIncrease;
+      changeQuantity(productId, decrease ? -1 : 1);
+    }
+  });
+
+  document.addEventListener("change", (event) => {
+    const input = event.target.closest("[data-qty-input]");
+    if (!input) return;
+    setQuantity(input.dataset.qtyInput, input.value);
   });
 
   orderForm.addEventListener("submit", async (event) => {
@@ -167,11 +187,53 @@
         <div>
           <strong class="item-title">${escapeHtml(item.name)}</strong>
           <p class="muted">${escapeHtml(item.description || item.reason || "상품 설명이 등록되어 있습니다.")}</p>
-          <button class="button ghost" type="button" data-remove="${escapeHtml(item.productId)}">삭제</button>
+          <div class="item-actions">
+            <div class="quantity-control" aria-label="수량 조절">
+              <button type="button" data-qty-decrease="${escapeHtml(getCartItemId(item))}" aria-label="수량 줄이기">-</button>
+              <input type="number" min="1" step="1" value="${Number(item.quantity || 1)}" data-qty-input="${escapeHtml(getCartItemId(item))}" aria-label="수량">
+              <button type="button" data-qty-increase="${escapeHtml(getCartItemId(item))}" aria-label="수량 늘리기">+</button>
+            </div>
+            <button class="button ghost" type="button" data-remove="${escapeHtml(getCartItemId(item))}">삭제</button>
+          </div>
         </div>
         <div class="price">${Number(item.salePrice || 0).toLocaleString("ko-KR")}원 × ${Number(item.quantity || 1)}</div>
       </article>`).join("");
     document.querySelector("#cartTotal").textContent = getTotal(cart).toLocaleString("ko-KR") + "원";
+  }
+
+  function changeQuantity(cartItemId, delta) {
+    const cart = readCart().map((item) => {
+      if (getCartItemId(item) !== cartItemId) return item;
+      return { ...item, quantity: Math.max(1, Number(item.quantity || 1) + delta) };
+    });
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    renderCart();
+  }
+
+  function setQuantity(cartItemId, value) {
+    const quantity = Math.max(1, Math.floor(Number(value) || 1));
+    const cart = readCart().map((item) => getCartItemId(item) === cartItemId ? { ...item, quantity } : item);
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    renderCart();
+  }
+
+  function ensureCartItemIds() {
+    const cart = readCart();
+    let changed = false;
+    const next = cart.map((item, index) => {
+      if (item.cartItemId) return item;
+      changed = true;
+      return { ...item, cartItemId: makeCartItemId(item, index) };
+    });
+    if (changed) localStorage.setItem(CART_KEY, JSON.stringify(next));
+  }
+
+  function getCartItemId(item) {
+    return item.cartItemId || makeCartItemId(item, 0);
+  }
+
+  function makeCartItemId(item, index) {
+    return "CART-" + String(item.productId || item.name || "item").replace(/[^a-zA-Z0-9가-힣_-]/g, "") + "-" + (item.addedAt || index || Date.now()) + "-" + index;
   }
 
   async function sendOrder(order) {

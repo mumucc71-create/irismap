@@ -248,8 +248,10 @@
     const existing = cart.find((item) => item.productId === product.productId);
     if (existing) {
       existing.quantity = Number(existing.quantity || 1) + 1;
+      if (!existing.cartItemId) existing.cartItemId = makeCartItemId(product);
     } else {
       cart.push({
+        cartItemId:makeCartItemId(product),
         productId:product.productId,
         name:product.name,
         brand:product.brand || "",
@@ -263,6 +265,10 @@
     }
     localStorage.setItem("irisShoppingCart", JSON.stringify(cart));
     location.href = "cart.html";
+  }
+
+  function makeCartItemId(product) {
+    return "CART-" + String(product.productId || product.name || "item").replace(/[^a-zA-Z0-9가-힣_-]/g, "") + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7);
   }
 
   function readJson(key,fallback){ try{return JSON.parse(localStorage.getItem(key)||"null")??fallback}catch(_){return fallback} }
@@ -279,13 +285,24 @@
     const savedCustomer = readJson("irisShoppingOrderCustomer", {});
     if(!phone)return savedCustomer || {};
     const users = readJson("irisMappingUsers", {});
-    if(users[phone])return { ...savedCustomer, ...users[phone] };
+    if(users[phone])return mergeMemberInfo(savedCustomer, users[phone]);
     const variants = phoneVariants(phone);
     const matchedUser = Object.entries(users).find(([key,user]) => {
       const stored = new Set([...phoneVariants(key), ...phoneVariants(user?.phone)]);
       return variants.some((value) => stored.has(value));
     })?.[1] || {};
-    return { ...savedCustomer, ...matchedUser };
+    return mergeMemberInfo(savedCustomer, matchedUser);
+  }
+  function mergeMemberInfo(savedCustomer = {}, member = {}){
+    return {
+      ...savedCustomer,
+      ...member,
+      name: member.name || savedCustomer.name || "",
+      phone: member.phone || savedCustomer.phone || "",
+      email: member.email || savedCustomer.email || "",
+      address: member.address || savedCustomer.address || "",
+      memo: member.memo || savedCustomer.memo || ""
+    };
   }
   function normalizePhone(value){
     let digits=String(value||"").replace(/\D/g,"");
@@ -301,7 +318,7 @@
   }
   window.addEventListener("irisMemberProfileRestored", prefillConsultForm);
   window.addEventListener("storage", (event) => {
-    if(["irisMappingUsers","irisMappingSession"].includes(event.key)) prefillConsultForm();
+    if(["irisMappingUsers","irisMappingSession","irisShoppingOrderCustomer"].includes(event.key)) prefillConsultForm();
   });
   function textMatch(a,b){ const x=normalize(a),y=normalize(b); return x && y && (x.includes(y)||y.includes(x)); }
   function normalize(value){ return String(value||"").toLowerCase().replace(/\s+/g,"").replace(/[·ㆍ/()\-]/g,""); }

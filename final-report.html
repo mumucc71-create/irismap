@@ -145,7 +145,7 @@
         <a class="button" href="reading.html">홍채 판독 결과</a>
         <a class="button primary" href="shopping.html">쇼핑하기</a>
         <a class="button" href="index.html">메인 화면</a>
-        <button id="printReportButton" class="button primary" type="button">인쇄/HTML 저장</button>
+        <button id="printReportButton" class="button primary" type="button">저장/인쇄</button>
       </nav>
     </header>
 
@@ -640,15 +640,7 @@
       target.innerHTML=`<div class="evidence-layout">${table}</div>`;
     }
 
-    function reportFileDate() {
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd}`;
-    }
-
-    function collectReportCss() {
+    function collectPrintableStyles() {
       return Array.from(document.styleSheets).map((sheet) => {
         try {
           return Array.from(sheet.cssRules || []).map((rule) => rule.cssText).join("\n");
@@ -658,40 +650,13 @@
       }).filter(Boolean).join("\n");
     }
 
-    function downloadFinalReportHtml() {
-      const report = document.querySelector(".page")?.cloneNode(true);
-      if(!report) return;
-      report.querySelectorAll("script").forEach((script) => script.remove());
-      const css = collectReportCss();
-      const html = `<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>IRIS MAPPING LAB 최종 결과</title>
-  <style>${css}</style>
-</head>
-<body>${report.outerHTML}</body>
-</html>`;
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `iris-final-report-${reportFileDate()}.html`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
-
     function printFinalReport() {
       try {
         window.focus();
         window.print();
       } catch (error) {
-        console.warn("인쇄창을 열 수 없어 HTML 저장을 진행합니다.", error);
+        console.warn("인쇄창을 열 수 없습니다.", error);
       }
-      downloadFinalReportHtml();
     }
 
     const printReportButton=document.querySelector("#printReportButton");
