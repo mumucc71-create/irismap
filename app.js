@@ -2697,16 +2697,16 @@ function createManualObservationMarker(point, match) {
   const ratios = markerPositionRatio(currentEye(), point);
   return {
     id: createObservationId(),
-    type: manualObservationLabels[pattern] || "점",
-    pattern,
-    strength,
     x: Math.round(point.x),
     y: Math.round(point.y),
     xRatio: Number(ratios.xRatio.toFixed(6)),
     yRatio: Number(ratios.yRatio.toFixed(6)),
     clockTime: match.clockTime,
     radiusPercent: Math.round(match.radiusRatio * 100),
-    ...match
+    ...match,
+    type: manualObservationLabels[pattern] || "점",
+    pattern,
+    strength
   };
 }
 

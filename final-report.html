@@ -98,7 +98,7 @@
     .quick-rank-card p { margin:8px 0; color:#d4dde4; }
     .quick-rank-signals { color:var(--muted); font-size:14px; }
     .manual-star-list { display:grid; gap:10px; margin-top:14px; }
-    .manual-star-row { display:grid; grid-template-columns:minmax(220px,1.35fr) minmax(110px,.55fr) minmax(120px,.55fr) minmax(120px,.65fr); gap:10px; align-items:center; padding:12px; border:1px solid #31556a; border-radius:8px; background:#07131e; }
+    .manual-star-row { display:grid; grid-template-columns:minmax(220px,1.35fr) minmax(120px,.55fr) minmax(120px,.65fr); gap:10px; align-items:center; padding:12px; border:1px solid #31556a; border-radius:8px; background:#07131e; }
     .manual-star-main { display:grid; gap:5px; }
     .manual-star-row strong { color:#f2f5f7; }
     .manual-star-desc { color:#aebdca; font-size:13px; line-height:1.45; }
@@ -337,7 +337,7 @@
         healthItems:findings.filter((item)=>healthMatchesTheme(item,theme))
       }));
       const legacyNotice=!data.allObservations?'<p class="notice">이 결과는 이전 방식으로 저장되어 좌우 상위 3개 관찰값만 포함합니다. 간·심장·뇌 전체 영역을 확인하려면 메인 화면에서 판독하기를 한 번 다시 실행해 주세요.</p>':'';
-      target.innerHTML=legacyNotice+results.map((result)=>`<div class="match-box"><h3>${escapeHtml(result.title)}</h3><p><strong>홍채지도에서 확인된 항목:</strong> ${result.eyeItems.length?escapeHtml(result.eyeItems.map((item)=>`${item.eyeLabel} ${item.code} ${item.area}(${item.score})`).join(", ")):'기준을 넘은 저장 관찰값 없음'}</p><p><strong>라이프케어진단 관련 응답:</strong> ${result.healthItems.length?escapeHtml(result.healthItems.slice(0,10).map((item)=>`${item.label}(${list(item.value)})`).join(", ")):'관련 주의 응답 없음'}</p><p class="meta">한쪽에 기록이 없더라도 질환이 없다는 뜻은 아니며, 양쪽에 함께 기록되어도 질환을 확정하지 않습니다.</p></div>`).join("");
+      target.innerHTML=legacyNotice+results.map((result)=>`<div class="match-box"><h3>${escapeHtml(result.title)}</h3><p><strong>홍채지도에서 확인된 항목:</strong> ${result.eyeItems.length?escapeHtml(result.eyeItems.map(formatIrisEvidenceItem).join(", ")):'기준을 넘은 저장 관찰값 없음'}</p><p><strong>라이프케어진단 관련 응답:</strong> ${result.healthItems.length?escapeHtml(result.healthItems.slice(0,10).map((item)=>`${item.label}(${list(item.value)})`).join(", ")):'관련 주의 응답 없음'}</p><p class="meta">한쪽에 기록이 없더라도 질환이 없다는 뜻은 아니며, 양쪽에 함께 기록되어도 질환을 확정하지 않습니다.</p></div>`).join("");
       return results;
     }
 
@@ -359,7 +359,7 @@
               <h3>${escapeHtml(match.title)}</h3>
               <p><strong>① 과거 치료·병력 근거:</strong> ${renderFindingEvidence(historyItems,"관련 기록 없음")}</p>
               <p><strong>② 현재 증상·생활습관 근거:</strong> ${renderFindingEvidence(currentItems,"관련 기록 없음")}</p>
-              <p><strong>③ 홍채지도 관찰 근거:</strong> ${escapeHtml(match.eyeItems.slice(0,8).map((item)=>`${item.eyeLabel} ${item.code} ${item.area} · ${item.type||"관찰 신호"} ${item.score||0}`).join(", "))}</p>
+              <p><strong>③ 홍채지도 관찰 근거:</strong> ${escapeHtml(match.eyeItems.slice(0,8).map(formatIrisEvidenceItem).join(", "))}</p>
               <p><strong>종합 판단:</strong> 과거 기록과 현재 불편 중 확인된 내용이 전통 홍채지도의 ${escapeHtml(match.title)} 관련 관찰 영역과 같은 상담 주제로 겹칩니다. 따라서 이 부위는 현재 생활관리와 전문 검사·상담에서 우선 확인할 영역으로 정리합니다.</p>
               <p class="meta">이는 해당 장기가 약하다는 판정이나 증상의 원인을 확정한 결과가 아닙니다.</p>
             </div>`;
@@ -449,6 +449,19 @@
     }
 
     function buildManualStarRow(item) {
+      const data=buildManualStarData(item);
+      return `<article class="manual-star-row">
+        <span class="manual-star-main"><strong>${escapeHtml(data.code)} ${escapeHtml(data.organ)} · ${escapeHtml(data.type)}</strong><small class="manual-star-desc">${escapeHtml(data.description)}</small></span>
+        <span class="manual-star-rating">${data.starText}</span>
+        <span class="manual-star-tags">${data.tags.map((label)=>`<span class="is-hit">${escapeHtml(label)}</span>`).join("")}</span>
+      </article>`;
+    }
+
+    function formatIrisEvidenceItem(item) {
+      return `${item.eyeLabel||""} ${item.code||"-"} ${irisOrganName(item)} · ${manualObservationTypeLabel(item.pattern||item.type)}(${item.score||0})`;
+    }
+
+    function buildManualStarData(item) {
       const theme=themeForIrisItem(item);
       const lifeMatches=theme?healthFindings.filter((finding)=>healthMatchesTheme(finding,theme)):[];
       const universeMatches=theme?universeMatchesTheme(theme):[];
@@ -462,7 +475,7 @@
       if(stars>=4&&longTerm)stars=5;
       const starText="★".repeat(stars)+"☆".repeat(5-stars);
       const organ=irisOrganName(item);
-      const type=item.type||item.pattern||"관찰";
+      const type=manualObservationTypeLabel(item.pattern||item.type);
       const clock=item.clockTime||clockLabel(item);
       const radius=item.radiusPercent??Math.round((Number(item.radiusRatio)||0)*100);
       const description=manualOrganDescription(organ,item.code);
@@ -472,13 +485,24 @@
         ["유니버스",universeMatches.length>0],
         ["치료/미완치",unresolved],
         ["5년+",longTerm]
-      ].filter(([,hit])=>hit);
-      return `<article class="manual-star-row">
-        <span class="manual-star-main"><strong>${escapeHtml(item.code||"-")} ${escapeHtml(organ)} · ${escapeHtml(type)}</strong><small class="manual-star-desc">${escapeHtml(description)}</small></span>
-        <span>${escapeHtml(clock)} · 반경 ${Number.isFinite(Number(radius))?radius:"-"}%</span>
-        <span class="manual-star-rating">${starText}</span>
-        <span class="manual-star-tags">${tags.map(([label])=>`<span class="is-hit">${label}</span>`).join("")}</span>
-      </article>`;
+      ].filter(([,hit])=>hit).map(([label])=>label);
+      return {manual:true,item,code:item.code||"-",organ,type,clock,radius,description,starText,tags,strengthLabel:`${starText} · ${item.strength||"중"}`};
+    }
+
+    function manualObservationTypeLabel(value) {
+      const text=String(value||"").trim();
+      const map={
+        DOT:"점",Spot:"점",spot:"점",
+        LINE:"선",Line:"선",line:"선",
+        LACUNA:"함몰",Lacuna:"함몰",lacuna:"함몰",
+        FIBER_SPREAD:"섬유퍼짐","Fiber Spread":"섬유퍼짐",fiberSpread:"섬유퍼짐",
+        PIGMENT:"색소점",Pigment:"색소점",pigment:"색소점",
+        COLOR:"관찰",Color:"관찰",color:"관찰",
+        RING:"고리",Ring:"고리",ring:"고리",
+        FIBER_BREAK:"섬유끊김","Fiber Break":"섬유끊김",fiberBreak:"섬유끊김",
+        IRREGULAR:"불규칙패턴",Irregular:"불규칙패턴",irregular:"불규칙패턴"
+      };
+      return map[text]||text||"관찰";
     }
 
     function manualOrganDescription(organ,code) {
@@ -554,7 +578,27 @@
     }
 
     function irisOrganName(item) {
-      return item.organ||item.area||item.organName||item.part||"부위 미확인";
+      const direct=[item.organ,item.area,item.organName,item.part].find((value)=>value&&value!=="부위 미확인"&&value!=="관찰 영역");
+      if(direct)return direct;
+      return irisOrganNameByCode(item.code)||"부위 미확인";
+    }
+
+    function irisOrganNameByCode(code) {
+      const map={
+        "1-1":"눈","1-2":"망막","1-3":"시신경","1-4":"동공","1-5":"수정체","1-6":"안압",
+        "2-1":"기관지","2-2":"기관지 분기","2-3":"기관 점막","2-4":"폐 상엽","2-5":"폐 혈류","2-6":"흉막",
+        "3-1":"폐 중심부","3-2":"폐동맥","3-3":"폐정맥","3-4":"림프","3-5":"신경","3-6":"폐 하엽",
+        "4-1":"위 점막","4-2":"위산분비","4-3":"위혈관","4-4":"유문","4-5":"위 신경","4-6":"위 운동",
+        "5-1":"췌장","5-2":"췌장관","5-3":"인슐린","5-4":"소화효소","5-5":"혈당조절","5-6":"호르몬",
+        "6-1":"방광중앙","6-2":"전립선","6-3":"골반혈관","6-4":"골반근육","6-5":"항문","6-6":"꼬리뼈",
+        "7-1":"간","7-2":"담낭","7-3":"소장상부","7-4":"회장","7-5":"상행결장","7-6":"하복부",
+        "8-1":"비장","8-2":"횡행결장","8-3":"췌장","8-4":"혈액순환","8-5":"림프","8-6":"면역",
+        "9-1":"폐하부","9-2":"흉벽","9-3":"횡격막","9-4":"림프순환",
+        "10-1":"목근육","10-2":"어깨","10-3":"경부림프","10-4":"갑상선","10-5":"편도선","10-6":"비강",
+        "11-1":"전두엽","11-2":"변연계","11-3":"운동피질","11-4":"청각","11-5":"평형감각","11-6":"자율신경",
+        "12-1":"대뇌피질","12-2":"소뇌","12-3":"감정중추","12-4":"뇌간","12-5":"시상하부","12-6":"시각신경"
+      };
+      return map[String(code||"").trim()]||"";
     }
 
     function renderCombined() {
