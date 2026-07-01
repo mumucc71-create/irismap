@@ -260,7 +260,7 @@ function initializeAuth() {
       createdAt: new Date().toISOString()
     };
     saveUsers(users);
-    syncMemberSignupToGoogleSheet({ ...users[phoneKey], phoneKey });
+    await syncMemberSignupToGoogleSheet({ ...users[phoneKey], phoneKey });
     localStorage.setItem(AUTH_SESSION_KEY, phoneKey);
     window.dispatchEvent(new CustomEvent("irisAuthChanged"));
     setAuthMessage("");
@@ -294,6 +294,7 @@ function initializeAuth() {
       saveUsers(users);
     }
 
+    syncMemberLoginToGoogleSheet({ ...user, phoneKey });
     localStorage.setItem(AUTH_SESSION_KEY, phoneKey);
     window.dispatchEvent(new CustomEvent("irisAuthChanged"));
     setAuthMessage("");
@@ -373,6 +374,36 @@ async function syncMemberSignupToGoogleSheet(member) {
     address: member.address || "",
     referrer: member.referrer || "",
     createdAt: member.createdAt || new Date().toISOString(),
+    page: location.href
+  };
+  try {
+    const response = await fetch(scriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => ({}));
+    return response.ok && (result.success === true || result.saved === true);
+  } catch (_) {
+    const failed = readJsonFromLocalStorage(MEMBER_SYNC_FAILED_KEY, []);
+    failed.push(payload);
+    localStorage.setItem(MEMBER_SYNC_FAILED_KEY, JSON.stringify(failed.slice(-50)));
+    return false;
+  }
+}
+
+async function syncMemberLoginToGoogleSheet(member) {
+  const scriptUrl = localStorage.getItem(GOOGLE_SCRIPT_URL_KEY) || DEFAULT_GOOGLE_SCRIPT_URL;
+  if (!scriptUrl) return false;
+  const payload = {
+    type: "member_login",
+    source: "member_login",
+    memberNo: member.memberNo || "",
+    name: member.name || "",
+    phone: member.phone || member.phoneKey || "",
+    phoneKey: member.phoneKey || "",
+    email: member.email || "",
+    loginAt: new Date().toISOString(),
     page: location.href
   };
   try {

@@ -613,6 +613,10 @@
       return cleanPhone ? `irisAiInsuranceConsult_${cleanPhone}` : "irisAiInsuranceConsult";
     }
 
+    const INSURANCE_SCRIPT_URL_KEY = "irisConsultGoogleScriptUrl";
+    const INSURANCE_DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSNHb7KjCL6lqu08bCzqFQjeN2B17xj46nQT3LMCZuvUmqiIQZsa8uQswbrJZDzK0/exec";
+    const INSURANCE_SYNC_FAILED_KEY = "irisInsuranceConsultGoogleSheetFailedQueue";
+
     function generateConsultId() {
       const now = new Date();
       return (
@@ -935,6 +939,55 @@
       return result;
     }
 
+    async function syncInsuranceConsultToGoogleSheet(result, saveType = "manual") {
+      const scriptUrl = localStorage.getItem(INSURANCE_SCRIPT_URL_KEY) || INSURANCE_DEFAULT_SCRIPT_URL;
+      if (!scriptUrl || !result) return false;
+      const answers = result.answers || {};
+      const profile = result.profile || {};
+      const recommendation = Array.isArray(result.recommendation) ? result.recommendation : [];
+      const payload = {
+        type: "insurance_consult",
+        source: "insurance_consult",
+        saveType,
+        consultId: result.consultId || "",
+        status: result.status || "",
+        name: profile.name || "",
+        phone: profile.phone || "",
+        gender: profile.gender || "",
+        age: profile.age || "",
+        ageGroup: profile.ageGroup || "",
+        job: profile.job || "",
+        customerType: answers.customerType || "",
+        worryTarget: listInsuranceValue(answers.worryTarget),
+        personalRiskConcern: listInsuranceValue(answers.personalRiskConcern),
+        currentInsurance: listInsuranceValue(answers.currentInsurance),
+        budget: listInsuranceValue(answers.budget),
+        recommendation: recommendation.map((item, index) => `${index + 1}. ${item.title} - ${item.reason}`).join("\n"),
+        answersJson: JSON.stringify(answers),
+        createdAt: result.createdAt || "",
+        savedAt: result.savedAt || new Date().toISOString(),
+        page: location.href
+      };
+      try {
+        const response = await fetch(scriptUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+        const syncResult = await response.json().catch(() => ({}));
+        return response.ok && (syncResult.success === true || syncResult.saved === true);
+      } catch (_) {
+        const failed = readInsuranceJson(INSURANCE_SYNC_FAILED_KEY) || [];
+        failed.push(payload);
+        localStorage.setItem(INSURANCE_SYNC_FAILED_KEY, JSON.stringify(failed.slice(-50)));
+        return false;
+      }
+    }
+
+    function listInsuranceValue(value) {
+      return Array.isArray(value) ? value.filter(Boolean).join(", ") : (value || "");
+    }
+
     function fillProfileFromSaved(profile = {}) {
       Object.entries(profileFields).forEach(([key, field]) => {
         if (field && profile[key] !== undefined && profile[key] !== null) {
@@ -1046,6 +1099,7 @@
       clearChoices();
       const result = saveProgress("completed");
       const priorities = buildRecommendation();
+      syncInsuranceConsultToGoogleSheet(result, "completed");
 
       addMessage("ai", "보험 상담 방향이 정리되었습니다. 본 결과는 상품 확정이 아니라 상담 우선순위 참고자료입니다.");
 
@@ -1097,7 +1151,7 @@
       nextQuestion();
     });
 
-    document.querySelector("#saveConsultButton").addEventListener("click", () => {
+    document.querySelector("#saveConsultButton").addEventListener("click", async () => {
       if (!state.profile || !state.profile.phone) {
         state.profile = collectProfile();
         if (!state.profile.phone) {
@@ -1112,6 +1166,7 @@
 
       const saved = saveProgress("manualSave");
       if (saved) {
+        await syncInsuranceConsultToGoogleSheet(saved, "manualSave");
         chatStatus.textContent = "현재 보험 상담이 저장되었습니다.";
         addMessage("ai", "현재 보험 상담 내용이 저장되었습니다. 나중에 전화번호로 다시 불러올 수 있습니다.");
       }
