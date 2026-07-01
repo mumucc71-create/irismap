@@ -66,6 +66,9 @@ const NORMALIZED_CENTER_X = VIEW_WIDTH / 2;
 const NORMALIZED_CENTER_Y = VIEW_HEIGHT / 2;
 const LEFT_EYE_AUTO_FALLBACK_OFFSET_X = 38;
 const LEFT_EYE_AUTO_FALLBACK_OFFSET_Y = 28;
+const GOOGLE_SCRIPT_URL_KEY = "irisConsultGoogleScriptUrl";
+const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSNHb7KjCL6lqu08bCzqFQjeN2B17xj46nQT3LMCZuvUmqiIQZsa8uQswbrJZDzK0/exec";
+const MEMBER_SYNC_FAILED_KEY = "irisMemberGoogleSheetFailedQueue";
 
 const zoneStyles = {
   "1시": { color: "#4577b8", group: "눈·귀·코·얼굴", note: "감각 기관과 머리 주변 반응" },
@@ -257,6 +260,7 @@ function initializeAuth() {
       createdAt: new Date().toISOString()
     };
     saveUsers(users);
+    syncMemberSignupToGoogleSheet({ ...users[phoneKey], phoneKey });
     localStorage.setItem(AUTH_SESSION_KEY, phoneKey);
     window.dispatchEvent(new CustomEvent("irisAuthChanged"));
     setAuthMessage("");
@@ -352,6 +356,47 @@ function saveUsers(users) {
   const defaultKeys = new Set(Object.keys(getDefaultUsers()));
   const customUsers = Object.fromEntries(Object.entries(users).filter(([key]) => !defaultKeys.has(key)));
   localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(customUsers));
+}
+
+async function syncMemberSignupToGoogleSheet(member) {
+  const scriptUrl = localStorage.getItem(GOOGLE_SCRIPT_URL_KEY) || DEFAULT_GOOGLE_SCRIPT_URL;
+  if (!scriptUrl) return false;
+  const payload = {
+    type: "member",
+    source: "member",
+    memberNo: member.memberNo || "",
+    joinedAt: member.joinedAt || "",
+    name: member.name || "",
+    phone: member.phone || member.phoneKey || "",
+    phoneKey: member.phoneKey || "",
+    email: member.email || "",
+    address: member.address || "",
+    referrer: member.referrer || "",
+    createdAt: member.createdAt || new Date().toISOString(),
+    page: location.href
+  };
+  try {
+    const response = await fetch(scriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => ({}));
+    return response.ok && (result.success === true || result.saved === true);
+  } catch (_) {
+    const failed = readJsonFromLocalStorage(MEMBER_SYNC_FAILED_KEY, []);
+    failed.push(payload);
+    localStorage.setItem(MEMBER_SYNC_FAILED_KEY, JSON.stringify(failed.slice(-50)));
+    return false;
+  }
+}
+
+function readJsonFromLocalStorage(key, fallback) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || "null") ?? fallback;
+  } catch (_) {
+    return fallback;
+  }
 }
 
 function prepareSignupDefaults() {
@@ -498,6 +543,7 @@ pairInput.addEventListener("change", async (event) => {
   renderMarkers();
   renderDetailMap(null);
   draw();
+  clearIrisReadingResult();
 });
 
 leftCameraButton?.addEventListener("click", () => leftCameraInput?.click());
@@ -664,6 +710,7 @@ deleteObservationButton?.addEventListener("click", () => {
   renderMarkers();
   draw();
   scheduleEyeStatePersistence(state.activeEye);
+  clearIrisReadingResult();
 });
 
 clearObservationsButton?.addEventListener("click", () => {
@@ -677,6 +724,7 @@ clearObservationsButton?.addEventListener("click", () => {
   renderMarkers();
   draw();
   scheduleEyeStatePersistence(state.activeEye);
+  clearIrisReadingResult();
 });
 
 saveIrisSessionButton?.addEventListener("click", () => {
@@ -904,6 +952,7 @@ canvas.addEventListener("click", (event) => {
       draw();
       updateUiEnabled();
       scheduleEyeStatePersistence(state.activeEye);
+      clearIrisReadingResult();
     }
     return;
   }
@@ -924,6 +973,7 @@ canvas.addEventListener("click", (event) => {
   renderDetailMap(match);
   draw();
   scheduleEyeStatePersistence(state.activeEye);
+  clearIrisReadingResult();
 });
 
 async function setEyeImage(eyeKey, file) {
@@ -1148,6 +1198,10 @@ function persistAllEyeStates() {
 }
 
 function scheduleEyeStatePersistence(eyeKey) {
+  const ownerKey = currentPhotoOwnerKey();
+  if (ownerKey && state.eyes?.[eyeKey]) {
+    persistEyeMarkersToLocalStorage(ownerKey, eyeKey, state.eyes[eyeKey]);
+  }
   clearTimeout(eyePersistenceTimer);
   eyePersistenceTimer = setTimeout(() => persistEyeState(eyeKey), 250);
 }
@@ -1381,7 +1435,16 @@ async function resetCurrentIrisPoints() {
   draw();
   updateUiEnabled();
   await persistAllEyeStates();
+  clearIrisReadingResult();
   setIrisSaveStatus("점과 관찰 설명을 초기화했습니다. 사진은 유지됩니다.");
+}
+
+function clearIrisReadingResult() {
+  localStorage.removeItem("irisReadingResult");
+  state.readingResults = { right: [], left: [] };
+  if (typeof window.renderIrisPersonalDashboard === "function") {
+    window.renderIrisPersonalDashboard();
+  }
 }
 
 async function deleteIrisSnapshot(snapshotId) {
@@ -2653,15 +2716,20 @@ function drawMarkers(eye = currentEye()) {
 
 function resolvePoint(x, y) {
   const eye = currentEye();
-  const dx = x - eye.centerX;
-  const dy = y - eye.centerY;
+  const frame = getEyePhotoFrame();
+  const irisRadius = frame.radius;
+  const pupilRadius = irisRadius * 0.22;
+  const dx = x - frame.x;
+  const dy = y - frame.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
-  if (distance < eye.pupilRadius || distance > eye.irisRadius) return null;
+  if (distance > irisRadius + 8) return null;
+  const effectiveDistance = Math.min(distance, irisRadius);
 
   const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
   const clockAngle = (angle + 90 - Number(eye.rotation || 0) + 360) % 360;
   const hour = Math.floor((clockAngle + 15) / 30) % 12 || 12;
-  const ring = clamp(Math.ceil(((distance - eye.pupilRadius) / (eye.irisRadius - eye.pupilRadius)) * 6), 1, 6);
+  const radiusRatio = clamp((effectiveDistance - pupilRadius) / (irisRadius - pupilRadius), 0, 1);
+  const ring = clamp(Math.ceil(radiusRatio * 6), 1, 6);
   const hourLabel = `${hour}시`;
   const code = `${hour}-${ring}`;
   const regions = state.map.eyes[state.activeEye].regions;
@@ -2678,7 +2746,7 @@ function resolvePoint(x, y) {
     code: region.code,
     organ: region.organ,
     angle: Math.round(clockAngle),
-    radiusRatio: Number(((distance - eye.pupilRadius) / (eye.irisRadius - eye.pupilRadius)).toFixed(3)),
+    radiusRatio: Number(radiusRatio.toFixed(3)),
     riskScore: state.map.riskScores[hourLabel] || null
   };
 }
@@ -3203,7 +3271,7 @@ function buildManualObservationReading(eyeKey) {
     const code = marker.code || `${marker.hour || ""}-${marker.ring || ""}`;
     const info = typeof irisOrganDB !== "undefined" ? irisOrganDB[code] : null;
     const area = marker.organ || info?.title || code || "관찰 영역";
-    const type = marker.type || manualObservationLabels[marker.pattern] || "점";
+    const type = manualObservationLabels[marker.pattern] || marker.type || "점";
     const score = manualStrengthScore(marker.strength);
     const consultation = `${marker.clockTime || `${marker.hour || ""}시`} 위치(${code})에서 ${buildObservationMeaningSentence(area, marker)}`;
     return {

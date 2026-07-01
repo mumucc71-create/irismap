@@ -20,6 +20,21 @@
 
   function area(id,name,keywords,historyAreas){return{id,name,keywords,historyAreas}}
   function readJson(key){try{return JSON.parse(localStorage.getItem(key)||"null")}catch(_){return null}}
+  function currentIrisMarkerCount(phone){
+    if(!phone)return 0;
+    return["right","left"].reduce((sum,eye)=>{
+      const markers=readJson(`irisEyeMarkers:${phone}:${eye}`);
+      return sum+(Array.isArray(markers)?markers.length:0);
+    },0);
+  }
+  function irisReadingMarkerCount(iris){return irisObservations(iris).length}
+  function buildCurrentIrisReading(phone){
+    if(!phone)return null;
+    const right=readJson(`irisEyeMarkers:${phone}:right`)||[];
+    const left=readJson(`irisEyeMarkers:${phone}:left`)||[];
+    if(!right.length&&!left.length)return null;
+    return{allObservations:{right,left},manualObservations:{right,left},right,left,accountPhone:phone};
+  }
   function normalizePhone(value){let digits=String(value||"").replace(/\D/g,"");if(digits.length===10&&digits.startsWith("10"))digits=`0${digits}`;return digits}
   function values(value){return Array.isArray(value)?value:[value]}
   function meaningful(value){return values(value).some((item)=>!NEUTRAL_VALUES.has(String(item??"").trim()))}
@@ -47,7 +62,10 @@
   function analyze(phoneValue){
     const phone=normalizePhone(phoneValue||localStorage.getItem("irisMappingSession"));
     const health=phone?readJson(`irisHealthTest:${phone}`):null;
-    const iris=readJson("irisReadingResult");
+    const rawIris=readJson("irisReadingResult");
+    const currentMarkerCount=currentIrisMarkerCount(phone);
+    const currentIris=buildCurrentIrisReading(phone);
+    const iris=currentMarkerCount>0&&irisReadingMarkerCount(rawIris)===currentMarkerCount?rawIris:currentIris;
     const allAnswers=flattenHealth(health,true);
     const allFindings=allAnswers.filter((item)=>meaningful(item.value));
     const familyFindings=allFindings.filter(isFamilyFinding);

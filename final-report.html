@@ -176,14 +176,60 @@
   <script>
     const sessionPhone = normalizePhone(localStorage.getItem("irisMappingSession"));
     const iris = readJson("irisReadingResult");
+    const currentIrisMarkers = currentIrisMarkerCount(sessionPhone);
+    const currentIrisReading = buildCurrentIrisReading(sessionPhone);
     const health = sessionPhone ? readJson(`irisHealthTest:${sessionPhone}`) : null;
     const insurance = sessionPhone ? readJson(`irisAiInsuranceConsult_${sessionPhone}`) : null;
-    const irisForAccount = iris && (!iris.accountPhone || normalizePhone(iris.accountPhone) === sessionPhone) ? iris : null;
+    const irisForAccount = isCurrentIrisReading(iris, sessionPhone, currentIrisMarkers) ? iris : currentIrisReading;
     const universeHistory = sessionPhone ? readJson(`UniverseReportDB:${sessionPhone}`) : null;
     const integratedResult = IrisIntegratedReadingEngine.analyze(sessionPhone);
 
     function normalizePhone(value) { let digits=String(value||"").replace(/\D/g,""); if(digits.length===10&&digits.startsWith("10")) digits=`0${digits}`; return digits; }
     function readJson(key) { try { return JSON.parse(localStorage.getItem(key)||"null"); } catch (_) { return null; } }
+    function currentIrisMarkerCount(phone) {
+      if(!phone)return 0;
+      return ["right","left"].reduce((sum,eye)=>{
+        const markers=readJson(`irisEyeMarkers:${phone}:${eye}`);
+        return sum+(Array.isArray(markers)?markers.length:0);
+      },0);
+    }
+    function irisReadingMarkerCount(data) {
+      if(!data)return 0;
+      const source=data.manualObservations||data.allObservations||{right:data.right||[],left:data.left||[]};
+      return ["right","left"].reduce((sum,eye)=>sum+(Array.isArray(source[eye])?source[eye].length:0),0);
+    }
+    function isCurrentIrisReading(data,phone,currentCount) {
+      if(!data||currentCount<=0)return false;
+      if(data.accountPhone&&normalizePhone(data.accountPhone)!==phone)return false;
+      return irisReadingMarkerCount(data)===currentCount;
+    }
+    function buildCurrentIrisReading(phone) {
+      if(!phone)return null;
+      const right=readJson(`irisEyeMarkers:${phone}:right`)||[];
+      const left=readJson(`irisEyeMarkers:${phone}:left`)||[];
+      if(!right.length&&!left.length)return null;
+      const normalize=(items,eyeLabel)=>items.map((item)=>normalizeCurrentIrisMarker(item,eyeLabel));
+      return {
+        createdAt:new Date().toISOString(),
+        accountPhone:phone,
+        right:normalize(right,"우안"),
+        left:normalize(left,"좌안"),
+        allObservations:{right:normalize(right,"우안"),left:normalize(left,"좌안")},
+        manualObservations:{right:normalize(right,"우안"),left:normalize(left,"좌안")},
+        observationMode:"manual-current",
+        summary:{}
+      };
+    }
+    function normalizeCurrentIrisMarker(item,eyeLabel) {
+      const code=item.code||`${item.hour||""}-${item.ring||""}`;
+      const organ=irisOrganName({...item,code});
+      const type=manualObservationTypeLabel(item.pattern||item.type);
+      const score=Number(item.score||item.priorityScore||0)||manualStrengthScore(item.strength);
+      return {...item,eyeLabel,code,organ,area:organ,type,score,priorityScore:Number(item.priorityScore||0)||score};
+    }
+    function manualStrengthScore(strength) {
+      return ({약:35,중:50,강:70,매우강:90})[strength]||50;
+    }
     function escapeHtml(value) { return String(value??"").replace(/[&<>"']/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
     function list(value) { return Array.isArray(value) ? value.filter(Boolean).join(", ") : (value || "미기록"); }
     function observationConsultation(value) { return String(value||"").replace("어릴 때부터 이어진 체질적 경향으로 참고됩니다.","동공에 가까운 관찰 위치입니다. 발생 시점은 실제 문진과 병력 기록을 우선하여 확인합니다.").replace("성장 후 생활습관이나 환경 영향으로 참고됩니다.","홍채 바깥쪽 관찰 위치입니다. 발생 원인은 문진과 실제 병력 기록을 함께 확인합니다."); }
@@ -451,7 +497,7 @@
     function buildManualStarRow(item) {
       const data=buildManualStarData(item);
       return `<article class="manual-star-row">
-        <span class="manual-star-main"><strong>${escapeHtml(data.code)} ${escapeHtml(data.organ)} · ${escapeHtml(data.type)}</strong><small class="manual-star-desc">${escapeHtml(data.description)}</small></span>
+        <span class="manual-star-main"><strong>${escapeHtml(`${data.code} ${data.organ} · ${data.type}`)}</strong><small class="manual-star-desc">${escapeHtml(data.description)}</small></span>
         <span class="manual-star-rating">${data.starText}</span>
         <span class="manual-star-tags">${data.tags.map((label)=>`<span class="is-hit">${escapeHtml(label)}</span>`).join("")}</span>
       </article>`;
@@ -492,17 +538,16 @@
     function manualObservationTypeLabel(value) {
       const text=String(value||"").trim();
       const map={
-        DOT:"점",Spot:"점",spot:"점",
-        LINE:"선",Line:"선",line:"선",
-        LACUNA:"함몰",Lacuna:"함몰",lacuna:"함몰",
-        FIBER_SPREAD:"섬유퍼짐","Fiber Spread":"섬유퍼짐",fiberSpread:"섬유퍼짐",
-        PIGMENT:"색소점",Pigment:"색소점",pigment:"색소점",
-        COLOR:"관찰",Color:"관찰",color:"관찰",
-        RING:"고리",Ring:"고리",ring:"고리",
-        FIBER_BREAK:"섬유끊김","Fiber Break":"섬유끊김",fiberBreak:"섬유끊김",
-        IRREGULAR:"불규칙패턴",Irregular:"불규칙패턴",irregular:"불규칙패턴"
+        DOT:"점",Spot:"점",spot:"점","점":"점",
+        LINE:"선",Line:"선",line:"선","선":"선",
+        LACUNA:"함몰",Lacuna:"함몰",lacuna:"함몰","함몰":"함몰",
+        FIBER_SPREAD:"섬유퍼짐","Fiber Spread":"섬유퍼짐",fiberSpread:"섬유퍼짐","섬유퍼짐":"섬유퍼짐",
+        PIGMENT:"색소점",Pigment:"색소점",pigment:"색소점","색소점":"색소점",
+        RING:"고리",Ring:"고리",ring:"고리","고리":"고리",
+        FIBER_BREAK:"섬유끊김","Fiber Break":"섬유끊김",fiberBreak:"섬유끊김","섬유끊김":"섬유끊김",
+        IRREGULAR:"불규칙패턴",Irregular:"불규칙패턴",irregular:"불규칙패턴","불규칙패턴":"불규칙패턴"
       };
-      return map[text]||text||"관찰";
+      return map[text]||text;
     }
 
     function manualOrganDescription(organ,code) {
@@ -555,16 +600,18 @@
     }
 
     function sortIrisManualClock(a,b) {
-      return irisClockOrder(a)-irisClockOrder(b)||
-        irisClockMinute(a)-irisClockMinute(b)||
-        (Number(a.ring||String(a.code||"").split("-")[1])||0)-(Number(b.ring||String(b.code||"").split("-")[1])||0);
+      return irisCodeHour(a)-irisCodeHour(b)||
+        irisCodeRing(a)-irisCodeRing(b)||
+        irisClockMinute(a)-irisClockMinute(b);
     }
 
-    function irisClockOrder(item) {
-      const hour=Number(item.hour||String(item.code||"").split("-")[0])||0;
-      if(hour===12)return 0;
-      if(hour>=1&&hour<=11)return hour;
-      return 99;
+    function irisCodeHour(item) {
+      const hour=Number(String(item.code||"").split("-")[0])||Number(item.hour)||0;
+      return hour>=1&&hour<=12?hour:99;
+    }
+
+    function irisCodeRing(item) {
+      return Number(String(item.code||"").split("-")[1])||Number(item.ring)||0;
     }
 
     function irisClockMinute(item) {
