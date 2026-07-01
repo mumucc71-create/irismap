@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">IRIS MAPPING LAB</string>
+    <string name="title_activity_main">IRIS MAPPING LAB</string>
+    <string name="package_name">com.irismappinglab.app</string>
+    <string name="custom_url_scheme">com.irismappinglab.app</string>
+</resources>

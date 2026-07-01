@@ -1,0 +1,19 @@
+{
+  "name": "iris-mapping-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IRIS MAPPING LAB Android wrapper",
+  "scripts": {
+    "android:prepare": "node tools/prepare-capacitor-web.js",
+    "android:sync": "pnpm android:prepare && cap sync android",
+    "android:open": "pnpm android:sync && cap open android",
+    "android:build:aab": "pnpm android:sync && cd android && gradlew.bat bundleRelease"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.4.4"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/cli": "^7.4.4"
+  }
+}

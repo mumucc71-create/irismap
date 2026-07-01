@@ -221,6 +221,10 @@
     const cart = readCart();
     let changed = false;
     const next = cart.map((item, index) => {
+      if (item.productId === "iris-camera" && item.cartItemId !== "CART-iris-camera") {
+        changed = true;
+        return { ...item, cartItemId: "CART-iris-camera" };
+      }
       if (item.cartItemId) return item;
       changed = true;
       return { ...item, cartItemId: makeCartItemId(item, index) };
@@ -229,10 +233,12 @@
   }
 
   function getCartItemId(item) {
+    if (item.productId === "iris-camera") return "CART-iris-camera";
     return item.cartItemId || makeCartItemId(item, 0);
   }
 
   function makeCartItemId(item, index) {
+    if (item.productId === "iris-camera") return "CART-iris-camera";
     return "CART-" + String(item.productId || item.name || "item").replace(/[^a-zA-Z0-9가-힣_-]/g, "") + "-" + (item.addedAt || index || Date.now()) + "-" + index;
   }
 

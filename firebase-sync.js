@@ -825,6 +825,12 @@ async function loadRemoteSnapshot(uid) {
 
   applyingRemoteSnapshot = true;
   try {
+    const mergedCartValue = mergeCartSnapshotValues(
+      localStorage.getItem(structuredKeys.cart),
+      data[structuredKeys.cart]
+    );
+    if (mergedCartValue) data[structuredKeys.cart] = mergedCartValue;
+
     const remoteKeys = new Set(Object.keys(data));
     const keysToRemove = [];
     for (let index = 0; index < localStorage.length; index += 1) {
@@ -914,6 +920,41 @@ function collectLocalStorageSnapshot() {
     result[key] = value;
   }
   return result;
+}
+
+function mergeCartSnapshotValues(localValue, remoteValue) {
+  const localCart = normalizeCartItems(parseJsonValue(localValue));
+  const remoteCart = normalizeCartItems(parseJsonValue(remoteValue));
+  if (!localCart.length && !remoteCart.length) return remoteValue || localValue || "";
+
+  const merged = new Map();
+  remoteCart.forEach((item, index) => {
+    merged.set(getCartMergeKey(item, index), item);
+  });
+  localCart.forEach((item, index) => {
+    const key = getCartMergeKey(item, index);
+    const previous = merged.get(key);
+    if (!previous) {
+      merged.set(key, item);
+      return;
+    }
+    merged.set(key, {
+      ...previous,
+      ...item,
+      quantity: Math.max(Number(previous.quantity || 1), Number(item.quantity || 1))
+    });
+  });
+
+  return JSON.stringify(Array.from(merged.values()));
+}
+
+function normalizeCartItems(value) {
+  return Array.isArray(value) ? value.filter((item) => item && typeof item === "object") : [];
+}
+
+function getCartMergeKey(item, index) {
+  if (item.productId === "iris-camera") return "product:iris-camera";
+  return String(item.cartItemId || item.productId || item.name || index);
 }
 
 function isManagedKey(key) {

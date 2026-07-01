@@ -268,6 +268,7 @@
   }
 
   function makeCartItemId(product) {
+    if (product.productId === "iris-camera") return "CART-iris-camera";
     return "CART-" + String(product.productId || product.name || "item").replace(/[^a-zA-Z0-9가-힣_-]/g, "") + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7);
   }
 

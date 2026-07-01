@@ -14,3 +14,10 @@ navigation-backup-*/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Node / Capacitor
+node_modules/
+www/
+android/.gradle/
+android/app/build/
+android/build/
