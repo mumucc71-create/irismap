@@ -4,6 +4,8 @@ const chartInput = document.querySelector("#chartInput");
 const pairInput = document.querySelector("#pairInput");
 const leftCameraInput = document.querySelector("#leftCameraInput");
 const rightCameraInput = document.querySelector("#rightCameraInput");
+const irisCameraButton = document.querySelector("#irisCameraButton");
+const irisCameraMenu = document.querySelector("#irisCameraMenu");
 const leftCameraButton = document.querySelector("#leftCameraButton");
 const rightCameraButton = document.querySelector("#rightCameraButton");
 const chartPreview = document.querySelector("#chartPreview");
@@ -41,10 +43,6 @@ const saveIrisSessionButton = document.querySelector("#saveIrisSessionButton");
 const loadIrisSessionButton = document.querySelector("#loadIrisSessionButton");
 const resetIrisPointsButton = document.querySelector("#resetIrisPointsButton");
 const largeIrisViewButton = document.querySelector("#largeIrisViewButton");
-const rightEyeZoomOutButton = document.querySelector("#rightEyeZoomOutButton");
-const rightEyeZoomInButton = document.querySelector("#rightEyeZoomInButton");
-const leftEyeZoomOutButton = document.querySelector("#leftEyeZoomOutButton");
-const leftEyeZoomInButton = document.querySelector("#leftEyeZoomInButton");
 const eraserModeButton = document.querySelector("#eraserModeButton");
 const irisSaveStatus = document.querySelector("#irisSaveStatus");
 const irisSaveListPanel = document.querySelector("#irisSaveListPanel");
@@ -61,6 +59,7 @@ const controls = {
 
 const VIEW_WIDTH = 640;
 const VIEW_HEIGHT = 360;
+const STACKED_EYE_GAP = 42;
 const NORMALIZED_IRIS_RADIUS = 118;
 const NORMALIZED_CENTER_X = VIEW_WIDTH / 2;
 const NORMALIZED_CENTER_Y = VIEW_HEIGHT / 2;
@@ -203,9 +202,9 @@ healthQuestionnaireButton?.addEventListener("click", () => {
 });
 
 function updateCanvasLayout() {
-  const shouldStack = false;
-  const nextWidth = state.largeView ? VIEW_WIDTH : VIEW_WIDTH * 2;
-  const nextHeight = VIEW_HEIGHT;
+  const shouldStack = !state.largeView;
+  const nextWidth = VIEW_WIDTH;
+  const nextHeight = state.largeView ? VIEW_HEIGHT : VIEW_HEIGHT * 2 + STACKED_EYE_GAP;
 
   state.stackedLayout = shouldStack;
 
@@ -556,14 +555,35 @@ chartInput.addEventListener("change", async (event) => {
   localStorage.setItem("previousIrisPhoto", dataUrl);
 });
 
-pairInput.addEventListener("change", async (event) => {
-  const files = [...(event.target.files || [])].slice(0, 2);
-  if (files.length === 0) return;
+pairInput.addEventListener("click", () => {
+  pairInput.value = "";
+});
 
-  if (files[0]) await setEyeImage("right", files[0]);
-  if (files[1]) await setEyeImage("left", files[1]);
+pairInput.addEventListener("change", async (event) => {
+  const selectedFiles = [...(event.target.files || [])];
+  if (selectedFiles.length === 0) return;
+
+  if (selectedFiles.length === 1) {
+    await setEyeImage("right", selectedFiles[0]);
+    finishPairUpload("홍채사진 1장을 우안에 올렸습니다.");
+    persistEyeState("right").catch((error) => {
+      console.warn("우안 홍채사진 저장 실패", error);
+      setIrisSaveStatus("우안 사진은 올라갔지만 저장은 실패했습니다.", true);
+    });
+    return;
+  }
+
+  await setEyeImage("right", selectedFiles[0]);
+  await setEyeImage("left", selectedFiles[1]);
+  finishPairUpload(`홍채사진 ${selectedFiles.length}장을 선택했습니다. 첫 2장을 우안/좌안에 올렸습니다.`);
+  persistAllEyeStates().catch((error) => {
+    console.warn("홍채사진 저장 실패", error);
+    setIrisSaveStatus("홍채사진은 올라갔지만 저장은 실패했습니다.", true);
+  });
+});
+
+function finishPairUpload(message) {
   normalizePairView();
-  await persistAllEyeStates();
 
   state.activeEye = "right";
   updateActiveEye();
@@ -575,8 +595,15 @@ pairInput.addEventListener("change", async (event) => {
   renderDetailMap(null);
   draw();
   clearIrisReadingResult();
-});
+  setIrisSaveStatus(message);
+}
 
+irisCameraButton?.addEventListener("click", () => {
+  if (!irisCameraMenu) return;
+  const nextOpen = irisCameraMenu.hidden;
+  irisCameraMenu.hidden = !nextOpen;
+  irisCameraButton.setAttribute("aria-expanded", String(nextOpen));
+});
 leftCameraButton?.addEventListener("click", () => leftCameraInput?.click());
 rightCameraButton?.addEventListener("click", () => rightCameraInput?.click());
 
@@ -740,6 +767,7 @@ deleteObservationButton?.addEventListener("click", () => {
   renderManualObservationGuide(null);
   renderMarkers();
   draw();
+  syncManualReadingResult();
   scheduleEyeStatePersistence(state.activeEye);
   clearIrisReadingResult();
 });
@@ -754,6 +782,7 @@ clearObservationsButton?.addEventListener("click", () => {
   renderManualObservationGuide(null);
   renderMarkers();
   draw();
+  syncManualReadingResult();
   scheduleEyeStatePersistence(state.activeEye);
   clearIrisReadingResult();
 });
@@ -784,22 +813,6 @@ closeIrisSaveListButton?.addEventListener("click", () => {
 
 resetIrisPointsButton?.addEventListener("click", () => {
   resetCurrentIrisPoints();
-});
-
-rightEyeZoomOutButton?.addEventListener("click", () => {
-  zoomIrisView(0.86);
-});
-
-rightEyeZoomInButton?.addEventListener("click", () => {
-  zoomIrisView(1.18);
-});
-
-leftEyeZoomOutButton?.addEventListener("click", () => {
-  zoomIrisView(0.86);
-});
-
-leftEyeZoomInButton?.addEventListener("click", () => {
-  zoomIrisView(1.18);
 });
 
 applyIrisViewScale();
@@ -835,10 +848,11 @@ const alignmentPointers = new Map();
 let alignmentGesture = null;
 
 canvas.addEventListener("pointerdown", (event) => {
+  if (event.pointerType === "touch") return;
   const hit = eventToCanvasPoint(event);
+  if (!hit.eyeKey) return;
   const eye = state.eyes[hit.eyeKey];
   if (!eye?.image || eye.positionLocked) return;
-  event.preventDefault();
   state.activeEye = hit.eyeKey;
   updateActiveEye();
   alignmentPointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY, eyeKey: hit.eyeKey, x: hit.x, y: hit.y });
@@ -853,10 +867,11 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 canvas.addEventListener("pointermove", (event) => {
+  if (event.pointerType === "touch") return;
   const previous = alignmentPointers.get(event.pointerId);
   if (!previous || !alignmentGesture) return;
-  event.preventDefault();
   const hit = eventToCanvasPoint(event);
+  if (!hit.eyeKey) return;
   alignmentPointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY, eyeKey: previous.eyeKey, x: hit.x, y: hit.y });
   const eye = state.eyes[alignmentGesture.eyeKey];
   if (!eye?.image || eye.positionLocked) return;
@@ -902,20 +917,6 @@ function finishAlignmentPointer(event) {
 canvas.addEventListener("pointerup", finishAlignmentPointer);
 canvas.addEventListener("pointercancel", finishAlignmentPointer);
 
-canvas.addEventListener("wheel", (event) => {
-  const hit = eventToCanvasPoint(event);
-  const eye = state.eyes[hit.eyeKey];
-  if (!eye?.image || eye.positionLocked) return;
-  event.preventDefault();
-  state.activeEye = hit.eyeKey;
-  scaleEyePhotoInFrame(eye, event.deltaY < 0 ? 1.05 : 0.95);
-  suppressCanvasClick = true;
-  refreshAlignmentConfidence(eye, true);
-  syncControls();
-  draw();
-  scheduleEyeStatePersistence(hit.eyeKey);
-}, { passive: false });
-
 function pointerDistance(first, second) {
   return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
 }
@@ -960,6 +961,7 @@ canvas.addEventListener("click", (event) => {
     return;
   }
   const hit = eventToCanvasPoint(event);
+  if (!hit.eyeKey) return;
 
   if (hit.eyeKey) {
     state.activeEye = hit.eyeKey;
@@ -982,8 +984,8 @@ canvas.addEventListener("click", (event) => {
       renderDetailMap(null);
       draw();
       updateUiEnabled();
+      syncManualReadingResult();
       scheduleEyeStatePersistence(state.activeEye);
-      clearIrisReadingResult();
     }
     return;
   }
@@ -1003,6 +1005,7 @@ canvas.addEventListener("click", (event) => {
   renderMarkers();
   renderDetailMap(match);
   draw();
+  syncManualReadingResult();
   scheduleEyeStatePersistence(state.activeEye);
   clearIrisReadingResult();
 });
@@ -1019,6 +1022,7 @@ async function setEyeImage(eyeKey, file) {
   eye.selected = null;
   resetAndDetectEye(eye, eyeKey);
   eye.alignmentMode = true;
+  syncManualReadingResult();
 }
 
 let eyePersistenceTimer = null;
@@ -1676,6 +1680,7 @@ async function restoreSavedEyeImagesForCurrentUser(options = {}) {
     }
   });
   logIrisMarkerSync("markers:restored", ownerKey);
+  syncManualReadingResult();
 }
 
 async function loadFirebaseEyeAnalysis(shouldWait = false) {
@@ -2510,7 +2515,7 @@ function draw() {
   }
   if (state.stackedLayout) {
     drawEyePanel("right", 0, 0);
-    drawEyePanel("left", 0, VIEW_HEIGHT);
+    drawEyePanel("left", 0, VIEW_HEIGHT + STACKED_EYE_GAP);
   } else {
     drawEyePanel("right", 0, 0);
     drawEyePanel("left", VIEW_WIDTH, 0);
@@ -2520,8 +2525,8 @@ function draw() {
   ctx.lineWidth = 2;
   ctx.beginPath();
   if (state.stackedLayout) {
-    ctx.moveTo(0, VIEW_HEIGHT);
-    ctx.lineTo(VIEW_WIDTH, VIEW_HEIGHT);
+    ctx.moveTo(0, VIEW_HEIGHT + STACKED_EYE_GAP / 2);
+    ctx.lineTo(VIEW_WIDTH, VIEW_HEIGHT + STACKED_EYE_GAP / 2);
   } else {
     ctx.moveTo(VIEW_WIDTH, 0);
     ctx.lineTo(VIEW_WIDTH, VIEW_HEIGHT);
@@ -2572,7 +2577,7 @@ function getEyePhotoFrame() {
   return {
     x: VIEW_WIDTH / 2,
     y: VIEW_HEIGHT / 2,
-    radius: Math.min(VIEW_HEIGHT * 0.46, VIEW_WIDTH * 0.42)
+    radius: Math.min(VIEW_HEIGHT * 0.49, VIEW_WIDTH * 0.46)
   };
 }
 
@@ -3043,11 +3048,14 @@ function eventToCanvasPoint(event) {
     };
   }
   if (state.stackedLayout) {
+    if (rawY > VIEW_HEIGHT && rawY < VIEW_HEIGHT + STACKED_EYE_GAP) {
+      return { eyeKey: null, x: clamp(rawX, 0, VIEW_WIDTH), y: VIEW_HEIGHT };
+    }
     const eyeKey = rawY < VIEW_HEIGHT ? "right" : "left";
     return {
       eyeKey,
       x: clamp(rawX, 0, VIEW_WIDTH),
-      y: clamp(rawY - (eyeKey === "left" ? VIEW_HEIGHT : 0), 0, VIEW_HEIGHT)
+      y: clamp(rawY - (eyeKey === "left" ? VIEW_HEIGHT + STACKED_EYE_GAP : 0), 0, VIEW_HEIGHT)
     };
   }
   const eyeKey = rawX < VIEW_WIDTH ? "right" : "left";
@@ -3325,32 +3333,7 @@ function runIrisReading() {
     renderAlignmentStatus();
     return;
   }
-  const manualRightObservations = buildManualObservationReading("right");
-  const manualLeftObservations = buildManualObservationReading("left");
-  const hasManualObservations = manualRightObservations.length || manualLeftObservations.length;
-  const rightResults = manualRightObservations;
-  const leftResults = manualLeftObservations;
-  state.readingResults = {
-    right: rightResults,
-    left: leftResults
-  };
-  const payload = {
-    createdAt: new Date().toISOString(),
-    accountPhone: localStorage.getItem(AUTH_SESSION_KEY) || "",
-    right: rightResults,
-    left: leftResults,
-    allObservations: {
-      right: manualRightObservations,
-      left: manualLeftObservations
-    },
-    manualObservations: {
-      right: manualRightObservations,
-      left: manualLeftObservations
-    },
-    observationMode: hasManualObservations ? "manual" : "manual-empty",
-    collarette: state.collaretteObservations,
-    summary: buildReadingSummary([...rightResults, ...leftResults])
-  };
+  const payload = buildCurrentManualReadingPayload();
 
   localStorage.setItem("irisReadingResult", JSON.stringify(payload));
   if (typeof window.renderIrisPersonalDashboard === "function") {
@@ -3378,6 +3361,46 @@ function runIrisReading() {
       ${renderReadingList(leftResults)}
     </div>
   `;
+}
+
+function syncManualReadingResult() {
+  try {
+    localStorage.setItem("irisReadingResult", JSON.stringify(buildCurrentManualReadingPayload()));
+    if (typeof window.renderIrisPersonalDashboard === "function") {
+      window.renderIrisPersonalDashboard();
+    }
+  } catch (error) {
+    console.warn("홍채 수동체크 결과 동기화 실패", error);
+  }
+}
+
+function buildCurrentManualReadingPayload() {
+  const manualRightObservations = buildManualObservationReading("right");
+  const manualLeftObservations = buildManualObservationReading("left");
+  const hasManualObservations = manualRightObservations.length || manualLeftObservations.length;
+  const rightResults = manualRightObservations;
+  const leftResults = manualLeftObservations;
+  state.readingResults = {
+    right: rightResults,
+    left: leftResults
+  };
+  return {
+    createdAt: new Date().toISOString(),
+    accountPhone: currentPhotoOwnerKey() || "guest",
+    right: rightResults,
+    left: leftResults,
+    allObservations: {
+      right: manualRightObservations,
+      left: manualLeftObservations
+    },
+    manualObservations: {
+      right: manualRightObservations,
+      left: manualLeftObservations
+    },
+    observationMode: hasManualObservations ? "manual" : "manual-empty",
+    collarette: state.collaretteObservations,
+    summary: buildReadingSummary([...rightResults, ...leftResults])
+  };
 }
 
 function buildReadingSummary(results) {
@@ -3441,8 +3464,10 @@ function findSelectedManualObservation() {
 
 function renderManualObservations() {
   if (!manualObservationList) return;
-  const eye = currentEye();
-  const markers = eye.markers || [];
+  const markers = [
+    ...(state.eyes.right.markers || []).map((marker) => ({ marker, eyeKey: "right" })),
+    ...(state.eyes.left.markers || []).map((marker) => ({ marker, eyeKey: "left" }))
+  ];
   if (deleteObservationButton) deleteObservationButton.disabled = !state.selectedObservationId;
   if (clearObservationsButton) clearObservationsButton.disabled = markers.length === 0;
   if (!markers.length) {
@@ -3458,13 +3483,13 @@ function renderManualObservations() {
     <details class="manual-observation-group" open>
       <summary>${group.label} <span>${group.items.length}개</span></summary>
       <div class="manual-observation-group-list">
-        ${group.items.map(({ marker, index }) => `
+        ${group.items.map(({ marker, eyeKey }) => `
           <div class="manual-observation-row ${marker.id === state.selectedObservationId ? "is-selected" : ""}" data-observation-row="${marker.id}">
-            <button class="manual-observation-select" type="button" data-observation-id="${marker.id}">
-              <span class="manual-row-main">${marker.code} ${marker.organ} · ${marker.type || manualObservationLabels[marker.pattern] || "관찰"}</span>
+            <button class="manual-observation-select" type="button" data-observation-id="${marker.id}" data-observation-eye="${eyeKey}">
+              <span class="manual-row-main">${eyeKey === "left" ? "좌안" : "우안"} · ${marker.code} ${marker.organ} · ${marker.type || manualObservationLabels[marker.pattern] || "관찰"}</span>
               <span class="manual-row-meta">${marker.clockTime || `${marker.hour || group.hour}시`} · 반경 ${marker.radiusPercent ?? Math.round((marker.radiusRatio || 0) * 100)}% · ${marker.strength || "중"}</span>
             </button>
-            <button class="manual-observation-delete" type="button" data-delete-observation-id="${marker.id}" aria-label="${marker.code} 관찰 삭제">삭제</button>
+            <button class="manual-observation-delete" type="button" data-delete-observation-id="${marker.id}" data-delete-observation-eye="${eyeKey}" aria-label="${marker.code} 관찰 삭제">삭제</button>
           </div>
         `).join("")}
       </div>
@@ -3474,7 +3499,7 @@ function renderManualObservations() {
 
 function groupManualObservations(markers) {
   const items = markers
-    .map((marker, index) => ({ marker, index }))
+    .map((item, index) => ({ marker: item.marker, eyeKey: item.eyeKey, index }))
     .sort((a, b) => {
       const ar = Number(a.marker.ring || String(a.marker.code || a.marker.area || "").split("-")[1]) || 0;
       const br = Number(b.marker.ring || String(b.marker.code || b.marker.area || "").split("-")[1]) || 0;
@@ -3521,7 +3546,8 @@ manualObservationList?.addEventListener("click", (event) => {
   const deleteItem = event.target.closest("[data-delete-observation-id]");
   if (deleteItem) {
     const markerId = deleteItem.dataset.deleteObservationId;
-    const eye = currentEye();
+    const eyeKey = deleteItem.dataset.deleteObservationEye || state.activeEye;
+    const eye = state.eyes[eyeKey] || currentEye();
     eye.markers = (eye.markers || []).filter((entry) => entry.id !== markerId);
     if (state.selectedObservationId === markerId) {
       state.selectedObservationId = null;
@@ -3533,17 +3559,23 @@ manualObservationList?.addEventListener("click", (event) => {
     renderManualObservations();
     renderMarkers();
     draw();
-    scheduleEyeStatePersistence(state.activeEye);
+    syncManualReadingResult();
+    scheduleEyeStatePersistence(eyeKey);
     return;
   }
   const item = event.target.closest("[data-observation-id]");
   if (!item) return;
-  const marker = currentEye().markers.find((entry) => entry.id === item.dataset.observationId);
+  const eyeKey = item.dataset.observationEye || state.activeEye;
+  const eye = state.eyes[eyeKey] || currentEye();
+  const marker = eye.markers.find((entry) => entry.id === item.dataset.observationId);
   if (!marker) return;
+  state.activeEye = eyeKey;
   state.selectedObservationId = marker.id;
   state.manualObservationStrength = marker.strength || "중";
   updateObservationStrengthButtons();
-  currentEye().selected = { x: marker.x, y: marker.y };
+  eye.selected = { x: marker.x, y: marker.y };
+  updateActiveEye();
+  syncControls();
   renderManualObservations();
   renderManualObservationGuide(marker);
   renderSelection(marker);

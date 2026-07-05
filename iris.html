@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>홍채촬영 | IRIS MAPPING LAB</title>
-  <link rel="stylesheet" href="styles.css?v=20260628-login-center-2">
+  <link rel="stylesheet" href="styles.css?v=20260705-camera-guide-large-1">
   <link rel="stylesheet" href="site-navigation.css?v=20260623-fantasy-bg-1">
 </head>
 <body>
@@ -55,23 +55,27 @@
       </footer>
     </div>
   </section>
-<div>
-  <img class="shooting-guide-image"
-       src="assets/iris-shooting-guide.png?v=20260623-shooting-guide-blue-1"
-       alt="홍채 촬영 방법 안내">
-</div>
   <main id="appShell" class="app-shell" hidden>
     <section class="workspace">
       <header class="topbar">
         <div class="actions">
-          <label class="file-button primary">
-            <input id="pairInput" type="file" accept="image/*" multiple>
-            홍채사진 올리기
-          </label>
+          <button id="irisCameraButton" class="camera-action-button" type="button" aria-label="홍채 카메라 메뉴 열기" aria-expanded="false" aria-controls="irisCameraMenu"></button>
+          <div id="irisCameraMenu" class="camera-action-menu" hidden>
+            <div class="camera-guide-block">
+              <strong>홍채촬영방법</strong>
+              <img class="shooting-guide-image"
+                   src="assets/iris-shooting-guide.png?v=20260623-shooting-guide-blue-1"
+                   alt="홍채 촬영 방법 안내">
+            </div>
+            <label class="file-button primary">
+              <input id="pairInput" type="file" accept="image/*" multiple="multiple">
+              홍채사진 올리기
+            </label>
+            <button id="leftCameraButton" type="button">좌안 촬영</button>
+            <button id="rightCameraButton" type="button">우안 촬영</button>
+          </div>
           <input id="leftCameraInput" type="file" accept="image/*" capture="environment" hidden>
           <input id="rightCameraInput" type="file" accept="image/*" capture="environment" hidden>
-          <button id="leftCameraButton" type="button">좌안 촬영</button>
-          <button id="rightCameraButton" type="button">우안 촬영</button>
           <input id="chartInput" type="file" accept="image/*" hidden>
           <button id="mappingButton" type="button" hidden>구독하기</button>
           <button id="universeButton" type="button" hidden>유니버스</button>
@@ -236,7 +240,7 @@
   <script src="iris-organ-db.js"></script>
   <script src="care-engine.js"></script>
   <script src="integrated-reading-engine.js?v=20260624-lifestyle-category-1"></script>
-  <script src="app.js?v=20260702-member-sheet-sync-1"></script>
+  <script src="app.js?v=20260705-touch-scroll-1"></script>
   <script src="iris-dashboard.js"></script>
   <script src="site-navigation.js?v=20260630-marker-sync-1"></script>
 </body>

@@ -106,6 +106,8 @@
     .manual-star-tags { display:flex; gap:5px; flex-wrap:wrap; }
     .manual-star-tags span { padding:3px 7px; border:1px solid #2d5367; border-radius:999px; color:#bcd0dc; font-size:12px; }
     .manual-star-tags .is-hit { border-color:var(--gold); color:#ffe3a0; background:#15120b; }
+    .manual-star-inline { margin-top:20px; padding-top:18px; border-top:1px solid rgba(80,119,139,.45); }
+    .manual-star-inline h2 { margin-top:0; }
     .evidence-tags { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
     .evidence-tags span { padding:4px 8px; border:1px solid #2d5367; border-radius:12px; color:#bcd0dc; font-size:12px; }
     .summary-priorities { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
@@ -171,6 +173,7 @@
     </section>
     
   </main>
+  <script src="iris-organ-db.js"></script>
   <script src="care-engine.js"></script>
   <script src="integrated-reading-engine.js?v=20260624-lifestyle-category-1"></script>
   <script>
@@ -326,9 +329,16 @@
     function allIrisObservations(data) {
       if(!data) return [];
       const source=data.manualObservations||data.allObservations||{right:data.right||[],left:data.left||[]};
-      return [["우안",source.right||[]],["좌안",source.left||[]]]
-        .flatMap(([eye,items])=>items.map((item)=>({...item,eyeLabel:item.eyeLabel||eye})))
+      const items=[["우안","right",source.right||[]],["좌안","left",source.left||[]]]
+        .flatMap(([eye,eyeKey,values])=>values.map((item)=>({...item,eyeKey:item.eyeKey||eyeKey,eyeLabel:item.eyeLabel||eye})))
         .filter(isManualIrisObservation);
+      const seen=new Set();
+      return items.filter((item)=>{
+        const key=[item.eyeKey||item.eyeLabel,item.id,item.code,item.clockTime,item.x,item.y,item.pattern,item.type].join("|");
+        if(seen.has(key))return false;
+        seen.add(key);
+        return true;
+      });
     }
 
     function isManualIrisObservation(item) {
@@ -484,12 +494,28 @@
       target.innerHTML=`<p class="meta">홍채촬영에서 직접 저장된 수동체크 항목만 라이프진단과 유니버스 결과와 대조했습니다.</p><div class="manual-star-list">${rows.join("")}</div>`;
     }
 
+    function compactManualStarItems(items) {
+      const groups=new Map();
+      items.forEach((item)=>{
+        const key=`${item.eyeKey||item.eyeLabel||""}|${item.code||""}|${irisOrganName(item)}`;
+        const current=groups.get(key);
+        if(!current||manualStarPriority(item)>manualStarPriority(current))groups.set(key,item);
+      });
+      return [...groups.values()].slice(0,12);
+    }
+
+    function manualStarPriority(item) {
+      const strength=({"약":1,"중":2,"강":3,"매우강":4})[item.strength]||2;
+      const pattern=({RING:1,DOT:2,FIBER_SPREAD:2,LINE:3,PIGMENT:4,IRREGULAR:4,LACUNA:5,FIBER_BREAK:5})[item.pattern]||2;
+      return pattern*10+strength;
+    }
+
     function ensureManualStarSection() {
       let section=document.querySelector("#manualStarSection");
       if(!section){
-        const base=document.querySelector("#integratedReading")?.closest(".card");
+        const base=document.querySelector("#integratedReading");
         if(!base)return null;
-        base.insertAdjacentHTML("afterend",'<section id="manualStarSection" class="card integrated-summary"><h2>홍채 수동체크 별점</h2><div id="manualStarResult"></div></section>');
+        base.insertAdjacentHTML("afterend",'<section id="manualStarSection" class="manual-star-inline"><h2>홍채 수동체크 별점</h2><div id="manualStarResult"></div></section>');
       }
       return document.querySelector("#manualStarResult");
     }
@@ -545,7 +571,9 @@
         PIGMENT:"색소점",Pigment:"색소점",pigment:"색소점","색소점":"색소점",
         RING:"고리",Ring:"고리",ring:"고리","고리":"고리",
         FIBER_BREAK:"섬유끊김","Fiber Break":"섬유끊김",fiberBreak:"섬유끊김","섬유끊김":"섬유끊김",
-        IRREGULAR:"불규칙패턴",Irregular:"불규칙패턴",irregular:"불규칙패턴","불규칙패턴":"불규칙패턴"
+        IRREGULAR:"불규칙패턴",Irregular:"불규칙패턴",irregular:"불규칙패턴","불규칙패턴":"불규칙패턴",
+        BLACK_DOT:"검은점",BROWN_DOT:"갈색점",
+        Color:"색상",color:"색상",COLOR:"색상","색상":"색상"
       };
       return map[text]||text;
     }
@@ -606,8 +634,10 @@
     }
 
     function irisCodeHour(item) {
-      const hour=Number(String(item.code||"").split("-")[0])||Number(item.hour)||0;
-      return hour>=1&&hour<=12?hour:99;
+      const hour=irisHourValue(item);
+      if(hour===12)return 0;
+      if(hour>=1&&hour<=11)return hour;
+      return 99;
     }
 
     function irisCodeRing(item) {
@@ -619,6 +649,19 @@
       return match?Number(match[2]):0;
     }
 
+    function irisHourValue(item) {
+      const values=[item.hour,item.clockTime,item.code,item.area].map((value)=>String(value||""));
+      for(const value of values){
+        const clockMatch=value.match(/(\d{1,2})\s*시/);
+        if(clockMatch)return Number(clockMatch[1])||0;
+        const codeMatch=value.match(/^(\d{1,2})\s*-/);
+        if(codeMatch)return Number(codeMatch[1])||0;
+        const number=Number(value);
+        if(number)return number;
+      }
+      return 0;
+    }
+
     function clockLabel(item) {
       const hour=Number(item.hour||String(item.code||"").split("-")[0])||0;
       return hour?`${hour}시`:"시간 미확인";
@@ -627,6 +670,9 @@
     function irisOrganName(item) {
       const direct=[item.organ,item.area,item.organName,item.part].find((value)=>value&&value!=="부위 미확인"&&value!=="관찰 영역");
       if(direct)return direct;
+      const code=item.code||`${item.hour||""}-${item.ring||""}`;
+      const db=typeof irisOrganDB!=="undefined"?irisOrganDB?.[code]:null;
+      if(db?.title)return db.title;
       return irisOrganNameByCode(item.code)||"부위 미확인";
     }
 
@@ -719,14 +765,14 @@
       const uniqueAwareness=[...new Map(awarenessItems.map((item)=>[item.name,item])).values()];
       const awarenessRole=uniqueAwareness.length>=3
         ? "건강 정보와 식품·환경 선택을 신경 쓰는 편입니다. 이미 관리하려는 노력이 있으니, 현재 습관을 조금 더 꾸준히 정리하면 좋습니다."
-        : "평소 건강관리를 꾸준히 챙기기 어려워 보입니다. 불편감이 반복되면 병원에서 정확히 확인하고 안전하게 관리하는 방향을 권합니다.";
+        : "건강 관심도 응답을 참고";
       const sources=[
         {label:"현재 문진",count:healthFindings.length,color:"#36d8d0",items:healthFindings.slice(0,4).map((item)=>item.label),role:"현재 불편과 증상을 가장 먼저 반영"},
         {label:"건강 관심도",count:uniqueAwareness.length,color:"#85df45",items:uniqueAwareness.slice(0,4).map((item)=>item.label),role:awarenessRole},
         {label:"과거 병력",count:universeAreas.length,color:"#e8b74c",items:universeAreas.slice(0,4).map((item)=>item.name),role:"과거 진료·검사 이력을 교차 확인"},
         {label:"홍채 관찰",count:irisItems.length,color:"#8f83ff",items:irisItems.slice(0,4).map((item)=>`${item.code} ${item.area}`),role:"문진과 병력의 관련 위치를 보조 확인"}
       ];
-      const tableRows=sources.map((source)=>`<tr><td><strong>${source.label}</strong></td><td>${source.count}개</td><td>${source.items.length?escapeHtml(source.items.join(", ")):"저장 자료 없음"}</td><td>${source.role}</td></tr>`).join("");
+      const tableRows=sources.map((source)=>`<tr><td><strong>${source.label}</strong></td><td>${source.count}개</td><td>${source.items.length?escapeHtml(source.items.join(", ")):"저장 자료 없음"}</td><td>${source.count?escapeHtml(source.role):"저장 자료 없음"}</td></tr>`).join("");
       const table=`<div class="evidence-table-wrap"><table class="evidence-table"><thead><tr><th>자료</th><th>확인 수</th><th>대표 근거</th><th>종합 결과에서의 역할</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
       target.innerHTML=`<div class="evidence-layout">${table}</div>`;
     }

@@ -157,7 +157,7 @@ button:disabled {
   border-bottom: 1px solid var(--line);
   display: flex;
   gap: 16px;
-  justify-content: space-between;
+  justify-content: center;
   padding: 18px 20px;
 }
 
@@ -204,7 +204,76 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: flex-end;
+  justify-content: center;
+  width: 100%;
+}
+
+.camera-action-button {
+  background: #35c7c0 !important;
+  border: 1px solid #35c7c0 !important;
+  border-radius: 999px;
+  box-shadow: 0 10px 28px rgba(53, 199, 192, 0.28);
+  color: #ffffff !important;
+  font-size: 0;
+  height: 72px;
+  min-height: 72px;
+  min-width: 72px;
+  order: -1;
+  padding: 0;
+  width: 72px;
+}
+
+#irisCameraButton {
+  flex: 0 0 72px;
+  margin: 0 calc(50% - 36px);
+}
+
+.camera-action-button::before {
+  content: "";
+  background: currentColor;
+  display: inline-block;
+  height: 30px;
+  margin: 0;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M9 3 7.17 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.17L15 3H9Zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-2.1a2.9 2.9 0 1 0 0-5.8 2.9 2.9 0 0 0 0 5.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M9 3 7.17 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.17L15 3H9Zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-2.1a2.9 2.9 0 1 0 0-5.8 2.9 2.9 0 0 0 0 5.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  width: 34px;
+}
+
+.camera-action-menu {
+  align-items: stretch;
+  background: rgba(3, 8, 14, 0.94);
+  border: 1px solid rgba(53, 199, 192, 0.42);
+  border-radius: 8px;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
+  display: grid;
+  flex: 0 0 min(980px, 100%);
+  gap: 10px;
+  margin: 4px auto 0;
+  padding: 14px;
+}
+
+.camera-guide-block {
+  display: grid;
+  gap: 8px;
+}
+
+.camera-guide-block strong {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.camera-action-menu .shooting-guide-image {
+  border-radius: 8px;
+  display: block;
+  object-fit: contain;
+  width: 100%;
+}
+
+.camera-action-menu .file-button,
+.camera-action-menu button {
+  width: 100%;
 }
 
 .file-button input {
@@ -383,9 +452,8 @@ h2 {
   display: flex;
   justify-content: center;
   min-height: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
+  overflow: auto;
+  overscroll-behavior: contain;
   position: relative;
 }
 
@@ -921,7 +989,7 @@ h2 {
   max-width: 100%;
   min-width: 0;
   width: 100%;
-  touch-action: none;
+  touch-action: pan-y;
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M3 2 L20 11 L11 14 L8 22 Z' fill='%23f3c85a' stroke='%23040a10' stroke-width='1.5'/%3E%3C/svg%3E") 4 4, crosshair;
 }
 
@@ -935,7 +1003,8 @@ h2 {
 }
 
 #irisCanvas.is-stacked {
-  aspect-ratio: 8 / 9;
+  aspect-ratio: 640 / 762;
+  max-width: min(100%, 760px);
 }
 
 .empty-state {
