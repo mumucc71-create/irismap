@@ -848,11 +848,11 @@ const alignmentPointers = new Map();
 let alignmentGesture = null;
 
 canvas.addEventListener("pointerdown", (event) => {
-  if (event.pointerType === "touch") return;
   const hit = eventToCanvasPoint(event);
   if (!hit.eyeKey) return;
   const eye = state.eyes[hit.eyeKey];
   if (!eye?.image || eye.positionLocked) return;
+  if (event.pointerType === "touch") event.preventDefault();
   state.activeEye = hit.eyeKey;
   updateActiveEye();
   alignmentPointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY, eyeKey: hit.eyeKey, x: hit.x, y: hit.y });
@@ -867,9 +867,9 @@ canvas.addEventListener("pointerdown", (event) => {
 });
 
 canvas.addEventListener("pointermove", (event) => {
-  if (event.pointerType === "touch") return;
   const previous = alignmentPointers.get(event.pointerId);
   if (!previous || !alignmentGesture) return;
+  if (event.pointerType === "touch") event.preventDefault();
   const hit = eventToCanvasPoint(event);
   if (!hit.eyeKey) return;
   alignmentPointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY, eyeKey: previous.eyeKey, x: hit.x, y: hit.y });
@@ -916,6 +916,22 @@ function finishAlignmentPointer(event) {
 
 canvas.addEventListener("pointerup", finishAlignmentPointer);
 canvas.addEventListener("pointercancel", finishAlignmentPointer);
+
+canvas.addEventListener("wheel", (event) => {
+  const hit = eventToCanvasPoint(event);
+  if (!hit.eyeKey) return;
+  const eye = state.eyes[hit.eyeKey];
+  if (!eye?.image || eye.positionLocked) return;
+  event.preventDefault();
+  state.activeEye = hit.eyeKey;
+  updateActiveEye();
+  const factor = event.deltaY < 0 ? 1.06 : 0.94;
+  scaleEyePhotoInFrame(eye, factor);
+  refreshAlignmentConfidence(eye, true);
+  syncControls();
+  draw();
+  scheduleEyeStatePersistence(hit.eyeKey);
+}, { passive: false });
 
 function pointerDistance(first, second) {
   return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
@@ -1790,6 +1806,8 @@ function exportEye(eyeKey) {
 
 function updateUiEnabled() {
   const enabled = Boolean(currentEye().image);
+  const canMoveIrisPhoto = Object.values(state.eyes).some((eye) => eye.image && !eye.positionLocked);
+  canvas.classList.toggle("is-alignment-ready", canMoveIrisPhoto);
   for (const input of Object.values(controls)) input.disabled = !enabled;
   autoDetectButton.disabled = !enabled || Boolean(currentEye().alignmentMode);
   if (centerResetButton) centerResetButton.disabled = !enabled;

@@ -992,6 +992,10 @@ h2 {
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M3 2 L20 11 L11 14 L8 22 Z' fill='%23f3c85a' stroke='%23040a10' stroke-width='1.5'/%3E%3C/svg%3E") 4 4, crosshair;
 }
 
+#irisCanvas.is-alignment-ready {
+  touch-action: none;
+}
+
 #irisCanvas.is-aligning { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M3 2 L20 11 L11 14 L8 22 Z' fill='%23f3c85a' stroke='%23040a10' stroke-width='1.5'/%3E%3C/svg%3E") 4 4, crosshair; }
 
 .alignment-guide-copy {
