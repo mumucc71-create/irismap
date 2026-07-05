@@ -452,8 +452,7 @@ h2 {
   display: flex;
   justify-content: center;
   min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
   position: relative;
 }
 
