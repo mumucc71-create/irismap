@@ -1255,7 +1255,7 @@ function logIrisMarkerSync(context, ownerKey = currentPhotoOwnerKey()) {
   });
 }
 
-async function persistEyeState(eyeKey) {
+async function persistEyeState(eyeKey, options = {}) {
   const ownerKey = currentPhotoOwnerKey();
   if (!ownerKey) return;
 
@@ -1267,7 +1267,10 @@ async function persistEyeState(eyeKey) {
       await runEyePhotoStore("readwrite", (store) => store.delete(id));
       updateIrisEyePhotoState(ownerKey, eyeKey, false);
       persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
-      await persistEyeStateToFirebase(eyeKey, eye, { includeImage: false });
+      await persistEyeStateToFirebase(eyeKey, eye, {
+        includeImage: false,
+        throwOnError: options.throwOnError
+      });
       return;
     }
 
@@ -1283,9 +1286,13 @@ async function persistEyeState(eyeKey) {
     }));
     updateIrisEyePhotoState(ownerKey, eyeKey, true);
     persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
-    await persistEyeStateToFirebase(eyeKey, eye, { includeImage: !eye.firebaseImageSynced });
+    await persistEyeStateToFirebase(eyeKey, eye, {
+      includeImage: !eye.firebaseImageSynced,
+      throwOnError: options.throwOnError
+    });
   } catch (error) {
     console.warn("홍채 사진을 저장하지 못했습니다.", error);
+    if (options.throwOnError) throw error;
   }
 }
 
@@ -1305,11 +1312,31 @@ async function persistEyeStateToFirebase(eyeKey, eye, options = {}) {
     if (options.includeImage) eye.firebaseImageSynced = true;
   } catch (error) {
     console.warn("Firebase 홍채 사진/점 동기화에 실패했습니다.", error);
+    if (options.throwOnError) throw error;
   }
 }
 
-function persistAllEyeStates() {
-  return Promise.all([persistEyeState("right"), persistEyeState("left")]);
+function persistAllEyeStates(options = {}) {
+  return Promise.all([
+    persistEyeState("right", options),
+    persistEyeState("left", options)
+  ]);
+}
+
+async function flushIrisCloudSync() {
+  const api = window.IrisFirebase;
+  if (!api?.getCurrentUser?.()?.uid || !api?.syncNow) {
+    throw new Error("Firebase 로그인 동기화가 준비되지 않았습니다.");
+  }
+  // Finish any startup restore first, then make the visible iris state authoritative.
+  await api.syncNow();
+  const ownerKey = currentPhotoOwnerKey();
+  if (ownerKey) {
+    persistEyeMarkersToLocalStorage(ownerKey, "right", state.eyes.right);
+    persistEyeMarkersToLocalStorage(ownerKey, "left", state.eyes.left);
+  }
+  syncManualReadingResult();
+  await api.syncNow();
 }
 
 function scheduleEyeStatePersistence(eyeKey) {
@@ -1436,10 +1463,11 @@ async function saveCurrentIrisSnapshot(options = {}) {
   try {
     setIrisSaveStatus("저장 중입니다...");
     syncManualReadingResult();
-    await persistAllEyeStates();
+    await persistAllEyeStates({ throwOnError: true });
     const payload = await buildIrisSnapshotPayload();
     await window.IrisFirebase.saveIrisSnapshot(payload);
     localStorage.setItem("irisSnapshotCache:lastSavedAt", payload.savedAt);
+    await flushIrisCloudSync();
     setIrisSaveStatus("저장되었습니다.");
     await refreshIrisSnapshotList();
     if (options.openFinalReport) {
@@ -1541,8 +1569,9 @@ async function applyIrisSnapshot(snapshot) {
   renderManualObservationGuide(null);
   renderDetailMap(null);
   draw();
-  await persistAllEyeStates();
+  await persistAllEyeStates({ throwOnError: true });
   syncManualReadingResult();
+  await flushIrisCloudSync();
 }
 
 async function resetCurrentIrisPoints() {
@@ -1731,9 +1760,11 @@ async function restoreSavedEyeImagesForCurrentUser(options = {}) {
         normalizeEyeView(eye, NORMALIZED_IRIS_RADIUS);
       }
       const localMarkers = readEyeMarkersFromLocalStorage(ownerKey, eyeKey);
-      if (localMarkers.length && !options.preferFirebase) {
-        eye.markers = restoreEyeMarkers(eye, localMarkers);
-      } else if (Array.isArray(record.remoteMarkers) && record.remoteMarkers.length) {
+      const storedGeometryMarkers = record.geometry?.markers;
+      if (!record.fromFirebase && Array.isArray(storedGeometryMarkers)) {
+        eye.markers = restoreEyeMarkers(eye, storedGeometryMarkers);
+        persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
+      } else if (Array.isArray(record.remoteMarkers)) {
         eye.markers = restoreEyeMarkers(eye, record.remoteMarkers);
         persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
       } else if (localMarkers.length) {
