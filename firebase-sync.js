@@ -800,10 +800,23 @@ async function maybeSaveMemberProfileFromLocal(uid, phone, profile, reason) {
   const ref = doc(db, "users", uid);
   const snap = await getDoc(ref);
   if (snap.exists()) {
+    const existing = snap.data() || {};
+    const mergedProfile = {
+      ...existing,
+      ...profile,
+      referrer: profile?.referrer || existing.referrer || ""
+    };
+    if (profile?.referrer && (!existing.referrer || existing.referrer !== profile.referrer)) {
+      await saveMemberProfile(uid, phone, mergedProfile);
+    }
+    if (mergedProfile.referrer) {
+      await saveReferralMemberSummary(mergedProfile);
+    }
     console.info("[IRIS Firebase member upload blocked]", {
       uid,
       reason,
       firestoreHasUser: true,
+      referrerIndexed: Boolean(mergedProfile.referrer),
       message: "Firestore 회원정보가 있어 localStorage 회원정보 업로드를 차단했습니다."
     });
     logStep("firestore:user:local-upload:blocked", { uid, reason });
@@ -816,6 +829,7 @@ async function maybeSaveMemberProfileFromLocal(uid, phone, profile, reason) {
     message: "Firestore 회원정보가 없어 localStorage 회원정보를 최초 업로드합니다."
   });
   await saveMemberProfile(uid, phone, profile);
+  if (profile?.referrer) await saveReferralMemberSummary(profile);
 }
 
 async function loadRemoteSnapshot(uid) {

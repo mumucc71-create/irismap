@@ -6,21 +6,23 @@
   <title>회원DB | IRIS MAPPING LAB</title>
   <link rel="stylesheet" href="site-navigation.css?v=20260624-single-bg-1">
   <style>
-    :root{color-scheme:dark;--bg:#05090f;--panel:#0b1420;--line:#294b5e;--text:#f5f7fa;--muted:#9eb0bd;--cyan:#36d8d0;--gold:#e8b74c}
+    :root{color-scheme:dark;--line:#294b5e;--text:#f5f7fa;--muted:#9eb0bd;--cyan:#36d8d0;--gold:#e8b74c}
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;background:linear-gradient(180deg,#07111a,#030609);color:var(--text);font-family:Arial,"Noto Sans KR",sans-serif}
     .page{width:min(1180px,100%);margin:auto;padding:24px 16px}
-    header{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:18px}
+    header{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:14px}
     .brand{color:var(--cyan);font-size:13px;font-weight:900;letter-spacing:.08em}
     h1{margin:8px 0 0;font-size:clamp(26px,4vw,40px)}
-    h2{margin:0 0 12px;color:var(--gold);font-size:20px}
+    h2{margin:0;color:var(--gold);font-size:20px}
     .button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:7px;color:var(--text);background:#0b1522;text-decoration:none;font-weight:800;cursor:pointer}
     .button.primary{color:#031312;background:var(--cyan);border-color:var(--cyan)}
+    .status{margin:0 0 16px;color:var(--muted);line-height:1.65}
+    .status strong{color:var(--cyan)}
     .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
     .card{padding:18px;border:1px solid var(--line);border-radius:8px;background:rgba(10,20,32,.94)}
-    .metric strong{display:block;color:var(--muted);font-size:13px}.metric b{display:block;margin-top:8px;color:var(--cyan);font-size:26px}
-    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:16px 0}
-    .status{color:var(--muted);line-height:1.65}.status strong{color:var(--cyan)}
+    .metric strong{display:block;color:var(--muted);font-size:13px}
+    .metric b{display:block;margin-top:8px;color:var(--cyan);font-size:26px}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px}
     .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:8px}
     table{width:100%;min-width:980px;border-collapse:collapse;background:#07111b}
     th,td{padding:12px;border-bottom:1px solid #203b4b;text-align:left;vertical-align:top;line-height:1.5}
@@ -43,11 +45,7 @@
       <a class="button" href="mypage.html">마이페이지</a>
     </header>
 
-    <section class="card">
-      <h2>접근 기준</h2>
-      <div id="accessStatus" class="status">로그인 정보를 확인하고 있습니다.</div>
-    </section>
-
+    <p id="ownerStatus" class="status">회원DB 기준을 확인하고 있습니다.</p>
     <section id="metrics" class="grid" aria-label="추천 회원 현황"></section>
 
     <section class="card">
@@ -73,8 +71,8 @@
     </section>
   </main>
   <script src="firebase-config.js?v=20260710-referral-admin-1"></script>
-  <script src="firebase-sync.js?v=20260710-referral-admin-1"></script>
-  <script src="referral-admin.js?v=20260710-referral-admin-2"></script>
+  <script src="firebase-sync.js?v=20260710-referral-admin-3"></script>
+  <script src="referral-admin.js?v=20260710-referral-admin-3"></script>
   <script src="site-navigation.js?v=20260710-cross-browser-sync-1"></script>
 </body>
 </html>

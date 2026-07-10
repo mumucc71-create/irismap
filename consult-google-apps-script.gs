@@ -149,7 +149,27 @@ function getSheet_(name, headers) {
   var sheet = spreadsheet.getSheetByName(name);
   if (!sheet) sheet = spreadsheet.insertSheet(name);
   if (sheet.getLastRow() === 0) sheet.appendRow(headers);
+  ensureHeaders_(sheet, headers);
   return sheet;
+}
+
+function ensureHeaders_(sheet, headers) {
+  var lastColumn = Math.max(sheet.getLastColumn(), 1);
+  var current = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(function(value) {
+    return String(value || "").trim();
+  });
+
+  headers.forEach(function(header) {
+    if (current.indexOf(header) !== -1) return;
+    var insertIndex = current.length + 1;
+    if (sheet.getName() === MEMBER_SHEET_NAME && header === "\uCD94\uCC9C\uC778") {
+      var pageIndex = current.indexOf("\uD398\uC774\uC9C0");
+      if (pageIndex !== -1) insertIndex = pageIndex + 1;
+    }
+    sheet.insertColumnBefore(insertIndex);
+    sheet.getRange(1, insertIndex).setValue(header);
+    current.splice(insertIndex - 1, 0, header);
+  });
 }
 
 function sendAdminMail_(subject, body) {

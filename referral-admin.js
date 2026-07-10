@@ -1,18 +1,18 @@
-(function(){
+(function () {
   "use strict";
 
   const SESSION_KEY = "irisMappingSession";
   const USERS_KEY = "irisMappingUsers";
   const rowsTarget = document.querySelector("#memberRows");
   const metricsTarget = document.querySelector("#metrics");
-  const accessTarget = document.querySelector("#accessStatus");
+  const ownerTarget = document.querySelector("#ownerStatus");
   const refreshButton = document.querySelector("#refreshButton");
 
-  refreshButton?.addEventListener("click", () => loadReferralDashboard());
-  window.addEventListener("irisFirebaseReadyForApp", () => loadReferralDashboard());
-  loadReferralDashboard();
+  refreshButton?.addEventListener("click", () => loadMemberDb());
+  window.addEventListener("irisFirebaseReadyForApp", () => loadMemberDb());
+  loadMemberDb();
 
-  async function loadReferralDashboard() {
+  async function loadMemberDb() {
     const phone = normalizePhone(localStorage.getItem(SESSION_KEY));
     const users = readJson(USERS_KEY, {});
     let currentMember = phone ? users?.[phone] : null;
@@ -25,18 +25,18 @@
 
     const referrerName = String(currentMember?.name || "").trim();
     if (!phone || !referrerName) {
-      accessTarget.innerHTML = `회원DB는 먼저 <a class="button" href="iris.html">로그인</a> 후 사용할 수 있습니다.`;
+      ownerTarget.textContent = "로그인한 회원 이름을 기준으로 회원DB를 표시합니다.";
       renderMetrics([]);
       renderRows([]);
       return;
     }
 
-    accessTarget.innerHTML = `<strong>${escapeHtml(referrerName)}</strong> 님을 추천인으로 적은 회원만 표시합니다.`;
+    ownerTarget.innerHTML = `<strong>${escapeHtml(referrerName)}</strong> 님을 추천인으로 등록한 회원입니다.`;
 
     let remoteMembers = [];
     if (window.IrisFirebase?.listReferralMembers) {
       remoteMembers = await window.IrisFirebase.listReferralMembers(referrerName).catch((error) => {
-        console.warn("추천인 회원 목록을 Firebase에서 불러오지 못했습니다.", error);
+        console.warn("회원DB Firebase 목록을 불러오지 못했습니다.", error);
         return [];
       });
     }
@@ -51,19 +51,22 @@
     const referrerKey = normalizeName(referrerName);
     return Object.entries(users || {})
       .filter(([, member]) => normalizeName(member?.referrer) === referrerKey)
-      .map(([phone, member]) => ({
-        id: `local-${phone}`,
-        memberPhone: normalizePhone(member.phone || phone),
-        memberName: member.name || "",
-        memberEmail: member.email || "",
-        memberAddress: member.address || "",
-        memberNo: member.memberNo || "",
-        joinedAt: member.joinedAt || member.createdAt || "",
-        referrer: member.referrer || "",
-        updatedAtText: member.updatedAt || member.createdAt || "",
-        irisSummary: buildLocalIrisSummary(normalizePhone(member.phone || phone)),
-        source: "local"
-      }));
+      .map(([phone, member]) => {
+        const memberPhone = normalizePhone(member.phone || phone);
+        return {
+          id: `local-${memberPhone}`,
+          memberPhone,
+          memberName: member.name || "",
+          memberEmail: member.email || "",
+          memberAddress: member.address || "",
+          memberNo: member.memberNo || "",
+          joinedAt: member.joinedAt || member.createdAt || "",
+          referrer: member.referrer || "",
+          updatedAtText: member.updatedAt || member.createdAt || "",
+          irisSummary: buildLocalIrisSummary(memberPhone),
+          source: "local"
+        };
+      });
   }
 
   function buildLocalIrisSummary(phone) {
@@ -86,7 +89,7 @@
   function collectObservations(result) {
     if (!result) return [];
     const source = result.manualObservations || result.allObservations || { right: result.right || [], left: result.left || [] };
-    return ["right","left"].flatMap((eyeKey) => {
+    return ["right", "left"].flatMap((eyeKey) => {
       const eye = eyeKey === "left" ? "좌안" : "우안";
       const items = Array.isArray(source?.[eyeKey]) ? source[eyeKey] : [];
       return items.map((item) => ({
@@ -122,7 +125,7 @@
 
   function renderRows(members) {
     if (!members.length) {
-      rowsTarget.innerHTML = `<tr><td colspan="6"><div class="empty">아직 내 이름을 추천인으로 가입한 회원 DB가 없습니다.</div></td></tr>`;
+      rowsTarget.innerHTML = `<tr><td colspan="6"><div class="empty">내 이름을 추천인으로 등록한 회원이 아직 없습니다.</div></td></tr>`;
       return;
     }
     rowsTarget.innerHTML = members.map((member) => {
