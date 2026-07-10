@@ -24,7 +24,7 @@
 
     const referrerName = String(currentMember?.name || "").trim();
     if (!phone || !referrerName) {
-      accessTarget.innerHTML = `추천인 관리자는 먼저 <a class="button" href="iris.html">로그인</a> 후 사용할 수 있습니다.`;
+      accessTarget.innerHTML = `회원DB는 먼저 <a class="button" href="iris.html">로그인</a> 후 사용할 수 있습니다.`;
       renderMetrics([]);
       renderRows([]);
       return;
