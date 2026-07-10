@@ -1519,7 +1519,8 @@ async function applyIrisSnapshot(snapshot) {
       eye.fileName = entry.fileName || `${eyeKey}-iris`;
       eye.image = await loadImageFromSrc(entry.displayImage);
       eye.sourceBlob = await dataUrlToBlob(entry.displayImage);
-      eye.firebaseImageSynced = true;
+      eye.normalizedBlob = null;
+      eye.firebaseImageSynced = false;
       if (!restoreEyeGeometry(eye, entry.geometry)) {
         resetAndDetectEye(eye, eyeKey);
         normalizeEyeView(eye, NORMALIZED_IRIS_RADIUS);
@@ -1541,6 +1542,7 @@ async function applyIrisSnapshot(snapshot) {
   renderDetailMap(null);
   draw();
   await persistAllEyeStates();
+  syncManualReadingResult();
 }
 
 async function resetCurrentIrisPoints() {
