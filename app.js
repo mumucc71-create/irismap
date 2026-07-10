@@ -195,7 +195,7 @@ window.addEventListener("resize", () => {
 });
 
 window.addEventListener("irisFirebaseReadyForApp", async () => {
-  await restoreSavedEyeImagesForCurrentUser({ preferFirebase: true });
+  await restoreSavedEyeImagesForCurrentUser();
 });
 
 healthQuestionnaireButton?.addEventListener("click", () => {
@@ -1691,7 +1691,8 @@ async function restoreSavedEyeImagesForCurrentUser(options = {}) {
     getStoredEyeRecord(ownerKey, "right"),
     getStoredEyeRecord(ownerKey, "left")
   ]);
-  const firebaseAnalysis = await loadFirebaseEyeAnalysis(options.preferFirebase);
+  const needsFirebase = options.preferFirebase || records.some((record) => !record?.blob);
+  const firebaseAnalysis = needsFirebase ? await loadFirebaseEyeAnalysis(options.preferFirebase) : null;
   console.info("[IRIS apply diagnostics:records]", {
     "5 rightEyeImage 존재 여부": Boolean(records[0]?.blob),
     "6 leftEyeImage 존재 여부": Boolean(records[1]?.blob),
@@ -1718,18 +1719,23 @@ async function restoreSavedEyeImagesForCurrentUser(options = {}) {
       eye.normalizedBlob = record.normalizedBlob || null;
       eye.image = await loadImageFromBlob(record.blob);
       eye.firebaseImageSynced = Boolean(record.fromFirebase);
+      if (record.fromFirebase) {
+        await runEyePhotoStore("readwrite", (store) => store.put(record)).catch(() => {});
+      }
       const geometryRestored = restoreEyeGeometry(eye, record.geometry);
       const hasSavedDetection = Number(eye.detection?.alignmentConfidence || 0) > 0;
       if (!geometryRestored || !hasSavedDetection) {
         resetAndDetectEye(eye, eyeKey);
         normalizeEyeView(eye, NORMALIZED_IRIS_RADIUS);
       }
-      const remoteMarkers = readEyeMarkersFromLocalStorage(ownerKey, eyeKey);
-      if (Array.isArray(record.remoteMarkers) && record.remoteMarkers.length) {
+      const localMarkers = readEyeMarkersFromLocalStorage(ownerKey, eyeKey);
+      if (localMarkers.length && !options.preferFirebase) {
+        eye.markers = restoreEyeMarkers(eye, localMarkers);
+      } else if (Array.isArray(record.remoteMarkers) && record.remoteMarkers.length) {
         eye.markers = restoreEyeMarkers(eye, record.remoteMarkers);
         persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
-      } else if (remoteMarkers.length) {
-        eye.markers = restoreEyeMarkers(eye, remoteMarkers);
+      } else if (localMarkers.length) {
+        eye.markers = restoreEyeMarkers(eye, localMarkers);
       }
       console.info("[IRIS apply diagnostics:eye]", {
         eyeKey,
@@ -1806,7 +1812,6 @@ async function loadFirebaseEyeAnalysis(shouldWait = false) {
         fromFirebase: true,
         updatedAt: entry.updatedAt || new Date().toISOString()
       };
-      await runEyePhotoStore("readwrite", (store) => store.put(result[eyeKey])).catch(() => {});
     }
     return result;
   } catch (error) {
