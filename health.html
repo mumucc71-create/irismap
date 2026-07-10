@@ -61,27 +61,21 @@
             <div id="familyDiseaseOptions" class="diagnosis-options wide-checklist"></div>
             <p id="familyDiseaseError" class="field-error" hidden>한 가지 이상 선택해 주세요.</p>
           </fieldset>
-          <h3 class="response-type-title">직접 기록 항목</h3>
-          <p class="response-type-note">선택한 가족력이 누구에게 있었는지와 발병 시기만 구체적으로 적어 주세요.</p>
-          <div class="supplemental-fields">
-            <label class="text-field">아버지의 질환·건강상태 <b>*</b><textarea name="fatherHistory" rows="3" required placeholder="질환명, 발병 나이, 현재 상태 / 없으면 없음"></textarea></label>
-            <label class="text-field">어머니의 질환·건강상태 <b>*</b><textarea name="motherHistory" rows="3" required placeholder="질환명, 발병 나이, 현재 상태 / 없으면 없음"></textarea></label>
-            <label class="text-field">형제자매의 질환·건강상태 <b>*</b><textarea name="siblingsHistory" rows="3" required placeholder="누가 어떤 질환이 있는지 / 없으면 없음"></textarea></label>
-            <label class="text-field">조부모·가까운 혈족의 주요 질환<textarea name="extendedFamilyHistory" rows="3" placeholder="암, 뇌졸중, 심장질환, 유전질환 등"></textarea></label>
-          </div>
         </section>
 
         <section class="test-section" aria-labelledby="historyTitle">
           <div class="section-heading"><span>03</span><h2 id="historyTitle">어린 시절과 과거 병력</h2></div>
           <h3 class="response-type-title">직접 기록 항목</h3>
-          <p class="response-type-note">질환·입원·수술의 구체적인 이름과 시기를 적는 항목입니다.</p>
+          <p class="response-type-note">어린 시절 크게 앓았던 병과 현재 상태를 기록하는 항목입니다.</p>
           <div class="supplemental-fields">
             <label class="text-field">어린 시절 크게 앓았던 병 <b>*</b><textarea name="childhoodIllness" rows="3" required placeholder="폐렴, 천식, 고열, 수술 등 / 없으면 없음"></textarea></label>
-            <label class="text-field">입원했던 경험 <b>*</b><textarea name="hospitalHistory" rows="3" required placeholder="시기, 이유, 기간 / 없으면 없음"></textarea></label>
-            <label class="text-field">수술·시술 경험 <b>*</b><textarea name="surgeryHistory" rows="3" required placeholder="수술명, 시기, 현재 상태 / 없으면 없음"></textarea></label>
-            <label class="text-field">큰 사고·골절·화상·부상 경험 <b>*</b><textarea name="injuryHistory" rows="3" required placeholder="부위, 시기, 후유증 / 없으면 없음"></textarea></label>
-            <label class="text-field">과거 감염병·반복 염증<textarea name="infectionHistory" rows="3" placeholder="결핵, 간염, 대상포진, 반복되는 염증 등"></textarea></label>
-            <label class="text-field">과거 질환의 현재 상태<textarea name="pastConditionStatus" rows="3" placeholder="완치, 재발, 약 복용, 후유증 등"></textarea></label>
+            <fieldset class="question-item">
+              <legend>과거 질환의 현재 상태 <b>*</b></legend>
+              <div class="choice-row compact">
+                <label><input type="radio" name="pastConditionStatus" value="완치" required><span>완치</span></label>
+                <label><input type="radio" name="pastConditionStatus" value="진행중"><span>진행중</span></label>
+              </div>
+            </fieldset>
           </div>
         </section>
 
@@ -197,30 +191,16 @@
       { title: "생활리듬·수면습관", questions: [
         ["nightWork", "밤새 작업하거나 새벽까지 깨어 있는 일이 있다", frequencyOptions],
         ["irregularSleep", "자는 시간과 일어나는 시간이 불규칙하다", frequencyOptions],
-        ["shiftWork", "교대근무를 한다", frequencyOptions],
-        ["nightShift", "야간근무를 한다", frequencyOptions],
         ["shortSleep", "평균 수면 시간이 부족하다", frequencyOptions],
         ["lateScreen", "잠들기 전 휴대폰·컴퓨터 사용이 많다", frequencyOptions],
         ["recoverySleep", "쉬어도 피로가 잘 풀리지 않는다", frequencyOptions]
-      ] },
-      { title: "식습관·섭취습관", questions: [
-        ["irregularMeal", "식사 시간이 불규칙하다", frequencyOptions],
-        ["skipMeal", "식사를 자주 거른다", frequencyOptions],
-        ["lateSnack", "야식을 자주 먹는다", frequencyOptions],
-        ["overeating", "과식하거나 폭식하는 편이다", frequencyOptions],
-        ["caffeine", "커피·카페인 음료를 자주 마신다", frequencyOptions],
-        ["processedFood", "인스턴트·가공식품을 자주 먹는다", frequencyOptions]
       ] },
       { title: "건강 관심도·식품 안전 인식", questions: [
         ["healthInterest", "평소 건강관리에 관심이 많다", frequencyOptions],
         ["healthSearch", "건강 관련 정보를 자주 찾아본다", frequencyOptions],
         ["healthCheckupHabit", "건강검진이나 건강 상태 확인을 챙기는 편이다", frequencyOptions],
         ["healthExpenseWilling", "건강을 위해 비용을 지출하는 편이다", frequencyOptions],
-        ["checkOrigin", "식품 구매 시 원산지를 확인한다", frequencyOptions],
         ["checkLabel", "식품 구매 시 성분표를 확인한다", frequencyOptions],
-        ["checkAdditives", "식품첨가물·보존료·색소를 신경 쓰는 편이다", frequencyOptions],
-        ["checkSugarSodium", "당 함량·나트륨·칼로리를 확인하는 편이다", frequencyOptions],
-        ["organicFood", "유기농·친환경 식품을 선호한다", frequencyOptions],
         ["microplasticConcern", "플라스틱·일회용품·환경호르몬 노출을 신경 쓰는 편이다", frequencyOptions],
         ["heavyMetalConcern", "중금속 노출이 걱정된다", frequencyOptions],
         ["waterQualityConcern", "수돗물·생수·정수기 수질을 신경 쓰는 편이다", frequencyOptions],
@@ -248,12 +228,11 @@
       { title: "수면과 피로", questions: [
         ["sleepDifficulty", "잠들기 어렵다", frequencyOptions], ["wakeAtDawn", "새벽에 자주 깬다", frequencyOptions],
         ["tiredAfterSleep", "자고 일어나도 피곤하다", frequencyOptions], ["snoringApnea", "코골이 또는 수면 중 숨 멎음이 있다", frequencyOptions],
-        ["daytimeSleepiness", "낮에 심하게 졸린다", frequencyOptions], ["fatigue", "쉽게 피로해진다", frequencyOptions]
+        ["daytimeSleepiness", "낮에 심하게 졸린다", frequencyOptions]
       ] },
       { title: "머리·신경·감각", questions: [
         ["headache", "두통이나 편두통이 있다", frequencyOptions], ["dizziness", "어지럽거나 균형을 잃는다", frequencyOptions],
         ["fainting", "실신하거나 의식을 잃은 적이 있다", frequencyOptions], ["numbness", "손발이나 신체 일부가 저리다", frequencyOptions],
-        ["weakness", "한쪽 또는 특정 부위에 힘이 빠진다", frequencyOptions], ["tremor", "손이나 몸이 떨린다", frequencyOptions],
         ["memory", "기억력이나 집중력이 떨어졌다", frequencyOptions], ["seizure", "경련 또는 발작 경험이 있다", frequencyOptions]
       ] },
       { title: "눈·귀·코·목·구강", questions: [
@@ -326,7 +305,7 @@
         ["astigmatism", "난시가 있다", statusOptions], ["presbyopia", "노안이 있다", statusOptions],
         ["cataract", "백내장 진단을 받은 적이 있다", statusOptions], ["glaucoma", "녹내장 진단을 받은 적이 있다", statusOptions],
         ["macularDegeneration", "황반변성 진단을 받은 적이 있다", statusOptions], ["floaters", "비문증이 있다", frequencyOptions],
-        ["dryEyeDetail", "안구건조증이 있다", frequencyOptions], ["conjunctivitis", "결막염이 자주 생긴다", frequencyOptions],
+        ["conjunctivitis", "결막염이 자주 생긴다", frequencyOptions],
         ["stye", "다래끼가 자주 생긴다", frequencyOptions], ["lightGlare", "빛 번짐이나 눈부심이 심하다", frequencyOptions],
         ["eyeFatigue", "눈의 피로가 심하다", frequencyOptions],
         ["eyeSurgery", "라식·라섹·백내장 등 눈 수술을 받은 적이 있다", statusOptions]
@@ -340,7 +319,6 @@
         ["vocalCordNodule", "성대결절 진단을 받은 적이 있다", statusOptions],
         ["acne", "여드름이 자주 발생한다", frequencyOptions],
         ["atopicSkin", "피부가 예민하고 잘 가렵다", frequencyOptions],
-        ["freckles", "주근깨가 많다", frequencyOptions],
         ["pigmentation", "반점·색소침착이 있다", frequencyOptions],
         ["wart", "사마귀가 있다", frequencyOptions],
         ["athletesFoot", "무좀이 있거나 반복된다", statusOptions],
@@ -356,15 +334,11 @@
         ["seafoodReaction", "해산물을 먹으면 불편하다", frequencyOptions],
         ["spicyReaction", "매운 음식을 먹으면 불편하다", frequencyOptions],
         ["greasyReaction", "기름진 음식을 먹으면 불편하다", frequencyOptions],
-        ["foodStomachPain", "특정 음식을 먹으면 배가 아프다", frequencyOptions],
-        ["foodDiarrhea", "특정 음식을 먹으면 설사를 한다", frequencyOptions],
-        ["foodGas", "특정 음식을 먹으면 가스가 심하다", frequencyOptions],
+        ["foodStomachPain", "특정 음식을 먹으면 배가 불편하다", frequencyOptions],
         ["foodSkinReaction", "특정 음식을 먹으면 피부가 가렵다", frequencyOptions],
         ["foodHeadache", "특정 음식을 먹으면 두통이 생긴다", frequencyOptions]
       ] },
       { title: "피부 체질·햇빛 반응", group: "skinConstitution", questions: [
-        ["skinToneWhite", "피부가 매우 흰 편이다", frequencyOptions],
-        ["skinToneDark", "피부가 어두운 편이다", frequencyOptions],
         ["sunBurnEasy", "햇빛에 쉽게 탄다", frequencyOptions],
         ["sunRash", "햇빛을 쬐면 가렵거나 붉어진다", frequencyOptions],
         ["sunAllergy", "햇빛 알레르기가 있다고 생각한다", statusOptions]
@@ -387,20 +361,14 @@
         ["morningPhlegm", "아침에 가래가 자주 나온다", frequencyOptions], ["breathShortSmoking", "흡연 후 숨이 차거나 답답하다", frequencyOptions],
         ["quitSmokingConcern", "금연을 해야 한다고 느낀다", frequencyOptions], ["secondhandSmoke", "간접흡연에 자주 노출된다", frequencyOptions]
       ] },
-      { title: "음주·숙취·주량", group: "drinkingPattern", questions: [
-        ["drinkingFrequency", "술을 자주 마시는 편이다", frequencyOptions], ["drinkingAmount", "한 번 마실 때 주량이 많은 편이다", frequencyOptions],
-        ["hangover", "술 마신 다음 날 숙취가 심하다", frequencyOptions], ["blackout", "술 마신 뒤 기억이 끊긴 적이 있다", frequencyOptions],
-        ["drinkingStomach", "술 마신 뒤 속쓰림이나 위장 불편감이 있다", frequencyOptions], ["drinkingSleep", "술 마신 날 수면의 질이 떨어진다", frequencyOptions],
-        ["drinkingRegret", "술 때문에 후회하거나 관계·건강 문제가 있었던 적이 있다", frequencyOptions], ["wantReduceDrinking", "술을 줄이고 싶다고 느낀다", frequencyOptions]
+      { title: "숙취", group: "drinkingPattern", questions: [
+        ["hangover", "술 마신 다음 날 숙취가 심하다", frequencyOptions]
       ] },
       { title: "운동·신체활동 취향", group: "exercisePattern", questions: [
-        ["exerciseRegular", "규칙적으로 운동을 한다", frequencyOptions], ["walkingExercise", "걷기 운동을 자주 한다", frequencyOptions],
-        ["hiking", "등산을 좋아하거나 자주 한다", frequencyOptions], ["strengthTraining", "근력운동을 한다", frequencyOptions],
-        ["intenseExercise", "격한 운동을 즐기는 편이다", frequencyOptions], ["stretching", "요가·필라테스·스트레칭을 한다", frequencyOptions],
-        ["danceLike", "춤추는 것을 좋아한다", frequencyOptions], ["runningLike", "러닝이나 빠른 유산소 운동을 좋아한다", frequencyOptions],
-        ["swimmingLike", "수영을 좋아한다", frequencyOptions], ["golfTennis", "골프·테니스·배드민턴 같은 회전 운동을 한다", frequencyOptions],
-        ["sweatExercise", "땀이 날 정도로 운동한다", frequencyOptions], ["exerciseInjury", "운동하다가 다친 적이 있다", frequencyOptions],
-        ["exerciseAfterPain", "운동 후 통증이 오래 간다", frequencyOptions], ["avoidExercise", "운동을 해야 한다고 생각하지만 잘 하지 않는다", frequencyOptions],
+        ["exerciseRegular", "규칙적으로 운동을 한다", frequencyOptions],
+        ["strengthTraining", "근력운동을 한다", frequencyOptions],
+        ["intenseExercise", "격한 운동을 즐기는 편이다", frequencyOptions],
+        ["avoidExercise", "운동을 해야 한다고 생각하지만 잘 하지 않는다", frequencyOptions],
         ["exercisePreference", "내 몸에 맞는 운동을 잘 모르겠다", frequencyOptions]
       ] },
       { title: "자세·목·허리·운동 성향", group: "postureSpine", questions: [
@@ -438,8 +406,7 @@
 
     const followupSections = [
       { title: "건강 행동·의료 이용 세부", group: "healthBehaviorDetail", questions: [
-        ["unusedSupplements", "건강식품을 사놓고 먹지 않은 적이 있다", frequencyOptions],
-        ["hospitalThreshold", "어느 정도 아파야 병원에 가는가", hospitalThresholdOptions]
+        ["unusedSupplements", "건강식품을 사놓고 먹지 않은 적이 있다", frequencyOptions]
       ] },
       { title: "가슴·흉곽", group: "chestThorax", questions: [
         ["pectusCarinatum", "새가슴이거나 흉곽이 앞으로 돌출되어 있다", statusOptions],
@@ -460,9 +427,8 @@
         ["concernParent", "부모님의 건강·치매·간병이 걱정된다", frequencyOptions],
         ["existingDiagnosisMemo", "이미 병원·상담센터·학교·전문가에게 들은 진단·상담·검사 이력이 있다", statusOptions]
       ] },
-      { title: "흡연·음주·카페인", group: "addictionPattern", questions: [
-        ["quitSmokingDifficulty", "금연을 시도했지만 어렵다고 느낀 적이 있다", frequencyOptions],
-        ["caffeineDependence", "커피·카페인·에너지음료에 의존하는 편이다", frequencyOptions]
+      { title: "금연 시도", group: "addictionPattern", questions: [
+        ["quitSmokingDifficulty", "금연을 시도했지만 어렵다고 느낀 적이 있다", frequencyOptions]
       ] },
       { title: "중독·의존·습관 행동", group: "addictionPattern", questions: [
         ["gameAddictionConcern", "게임·스마트폰·SNS 사용을 줄이기 어렵다", frequencyOptions],
@@ -628,8 +594,7 @@
         ["fearEconomicCollapse", "질병으로 경제가 무너지는 것이 두렵다", concernOptions]
       ] },
       { title: "의료 이용 성향·병원 인식", group: "medicalBehavior", questions: [
-        ["hospitalAvoidance", "몸이 아파도 병원 가는 것을 미루거나 참는 편이다", frequencyOptions],
-        ["smallSymptomHospital", "작은 증상에도 병원을 가는 편이다", frequencyOptions],
+        ["hospitalThreshold", "어느 정도 아파야 병원에 가는가", hospitalThresholdOptions],
         ["medicationAdherence", "의사가 처방한 약을 끝까지 잘 복용한다", frequencyOptions],
         ["antibioticStop", "증상이 좋아지면 항생제나 처방약을 중간에 끊는 편이다", frequencyOptions],
         ["hospitalTrust", "의사와 병원을 신뢰하는 편이다", frequencyOptions],
@@ -748,7 +713,7 @@
     const sectionOrder = [
       "어린이 성장·기본 건강", "유아 발달·생활", "초등 저학년 학교생활", "초등 고학년 성장·정서",
       "건강 관심도·식품 안전 인식", "건강 행동·의료 이용 세부", "의료 이용 성향·병원 인식",
-      "생활리듬·수면습관", "식습관·섭취습관", "흡연·호흡기 반응", "음주·숙취·주량", "흡연·음주·카페인",
+      "생활리듬·수면습관", "흡연·호흡기 반응", "숙취", "금연 시도",
       "운동·신체활동 취향", "반려동물·주거환경·주변위생", "중독·의존·습관 행동",
       "수면과 피로", "머리·신경·감각", "눈·귀·코·목·구강", "눈 건강 상세", "알레르기·피부·두피·이비인후과",
       "음식 반응·숨은 알레르기", "피부 체질·햇빛 반응", "호흡기", "심장·혈관·순환", "심장 특이 이력",
@@ -850,7 +815,7 @@
     const lowerElementarySections = new Set(["초등 저학년 학교생활"]);
     const upperElementarySections = new Set(["초등 고학년 성장·정서"]);
     const pediatricCoreSections = new Set([
-      "생활리듬·수면습관", "식습관·섭취습관", "수면과 피로", "머리·신경·감각",
+      "생활리듬·수면습관", "수면과 피로", "머리·신경·감각",
       "눈·귀·코·목·구강", "눈 건강 상세", "알레르기·피부·두피·이비인후과",
       "음식 반응·숨은 알레르기", "피부 체질·햇빛 반응", "호흡기", "심장·혈관·순환",
       "소화기·간·담낭·췌장", "신장·비뇨기", "내분비·대사", "근육·관절·척추와 통증",
@@ -864,7 +829,7 @@
     const maleMidlifeSections = new Set(["남성 건강·전립선·배뇨"]);
     const childSections = new Set(["자녀 발달·학습·행동 관찰", "자녀 미래·교육·양육 고민"]);
     const adultSections = new Set([
-      "흡연·호흡기 반응", "음주·숙취·주량", "흡연·음주·카페인", "중독·의존·습관 행동",
+      "흡연·호흡기 반응", "숙취", "금연 시도", "중독·의존·습관 행동",
       "습관·충동 조절", "건강 투자·가계 운영·재정 사용 성향",
       "보험 인식·재정 준비·위험 대비", "질병 고통·치료비·존엄한 마지막", "삶·죽음·미래에 대한 생각"
     ]);
@@ -1012,11 +977,11 @@
     document.querySelector(".home-btn").addEventListener("click", () => { location.href = "index.html"; });
 
     const groupedFieldNames = {
-      familyHistory: ["familyDiseases", "fatherHistory", "motherHistory", "siblingsHistory", "extendedFamilyHistory", "childhoodIllness", "hospitalHistory", "surgeryHistory", "injuryHistory", "infectionHistory", "pastConditionStatus", "guardianName", "guardianRelation", "studentGrade"],
-      lifestyle: ["name", "phone", "gender", "age", "height", "weight", "bloodType", "maritalStatus", "childCount", "nightWork", "irregularSleep", "shiftWork", "nightShift", "shortSleep", "lateScreen", "recoverySleep"],
-      diet: ["favoriteFoods", "mealCount", "waterIntake", "allergies", "allergyDetails", "irregularMeal", "skipMeal", "lateSnack", "overeating", "caffeine", "processedFood"],
+      familyHistory: ["familyDiseases", "childhoodIllness", "pastConditionStatus", "guardianName", "guardianRelation", "studentGrade"],
+      lifestyle: ["name", "phone", "gender", "age", "height", "weight", "bloodType", "maritalStatus", "childCount", "nightWork", "irregularSleep", "shortSleep", "lateScreen", "recoverySleep"],
+      diet: ["favoriteFoods", "mealCount", "waterIntake", "allergies", "allergyDetails"],
       healthAwareness: ["healthInterest", "healthSearch", "healthCheckupHabit", "healthExpenseWilling"],
-      foodSafetyAwareness: ["checkOrigin", "checkLabel", "checkAdditives", "checkSugarSodium", "organicFood"],
+      foodSafetyAwareness: ["checkLabel"],
       environmentalExposureAwareness: ["microplasticConcern", "heavyMetalConcern", "waterQualityConcern", "airPollutionConcern"],
       supplementUse: ["supplementUse"],
       stress: ["stressSources", "workStress", "familyStress", "relationStress", "moneyStress", "loneliness", "futureAnxiety"],
