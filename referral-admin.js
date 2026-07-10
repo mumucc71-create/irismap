@@ -5,6 +5,7 @@
   const USERS_KEY = "irisMappingUsers";
   const GOOGLE_SCRIPT_URL_KEY = "irisConsultGoogleScriptUrl";
   const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSNHb7KjCL6lqu08bCzqFQjeN2B17xj46nQT3LMCZuvUmqiIQZsa8uQswbrJZDzK0/exec";
+  const MEMBER_SHEET_GVIZ_URL = "https://docs.google.com/spreadsheets/d/1yRArb4zM59y4-NW8ncvosaghzPdRRyYrnM5cwMVr2DY/gviz/tq";
   const rowsTarget = document.querySelector("#memberRows");
   const metricsTarget = document.querySelector("#metrics");
   const ownerTarget = document.querySelector("#ownerStatus");
@@ -50,21 +51,85 @@
 
   async function listReferralMembersFromSheet(referrerName) {
     const scriptUrl = localStorage.getItem(GOOGLE_SCRIPT_URL_KEY) || DEFAULT_GOOGLE_SCRIPT_URL;
-    if (!scriptUrl || !referrerName) return [];
+    if (!referrerName) return [];
+    if (!scriptUrl) return listReferralMembersFromPublicSheet(referrerName);
     try {
       const url = new URL(scriptUrl);
       url.searchParams.set("type", "referral_members");
       url.searchParams.set("referrer", referrerName);
       const response = await fetch(url.toString(), { method: "GET" });
       const result = await response.json().catch(() => ({}));
-      return Array.isArray(result.members) ? result.members.map((member) => ({
-        ...member,
-        irisSummary: member.irisSummary || { hasPhoto: false, photoState: {}, markerCount: 0, topObservations: [] }
-      })) : [];
+      if (Array.isArray(result.members) && result.members.length) {
+        return result.members.map(normalizeSheetMember);
+      }
     } catch (error) {
       console.warn("회원DB Google Sheet 목록을 불러오지 못했습니다.", error);
-      return [];
     }
+    return listReferralMembersFromPublicSheet(referrerName);
+  }
+
+  function normalizeSheetMember(member) {
+    return {
+      ...member,
+      irisSummary: member.irisSummary || { hasPhoto: false, photoState: {}, markerCount: 0, topObservations: [] }
+    };
+  }
+
+  function listReferralMembersFromPublicSheet(referrerName) {
+    return new Promise((resolve) => {
+      const callbackName = `irisMemberSheet_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const script = document.createElement("script");
+      const timeout = window.setTimeout(() => cleanup([]), 10000);
+
+      function cleanup(value) {
+        window.clearTimeout(timeout);
+        delete window[callbackName];
+        script.remove();
+        resolve(value);
+      }
+
+      window[callbackName] = (payload) => {
+        try {
+          cleanup(parseGvizMembers(payload, referrerName));
+        } catch (error) {
+          console.warn("회원DB 공개 시트 파싱에 실패했습니다.", error);
+          cleanup([]);
+        }
+      };
+
+      const url = new URL(MEMBER_SHEET_GVIZ_URL);
+      url.searchParams.set("sheet", "멤버");
+      url.searchParams.set("tqx", `out:json;responseHandler:${callbackName}`);
+      script.src = url.toString();
+      script.onerror = () => cleanup([]);
+      document.head.appendChild(script);
+    });
+  }
+
+  function parseGvizMembers(payload, referrerName) {
+    const referrerKey = normalizeName(referrerName);
+    const columns = payload?.table?.cols || [];
+    const rows = payload?.table?.rows || [];
+    const labels = columns.map((column) => String(column?.label || "").trim());
+    return rows.map((row, rowIndex) => {
+      const record = {};
+      (row?.c || []).forEach((cell, index) => {
+        record[labels[index] || `col${index}`] = cell?.f ?? cell?.v ?? "";
+      });
+      return { record, rowIndex };
+    }).filter(({ record }) => normalizeName(record["추천인"]) === referrerKey)
+      .map(({ record, rowIndex }) => normalizeSheetMember({
+        id: `sheet-${normalizePhone(record["연락처"]) || rowIndex}`,
+        memberPhone: normalizePhone(record["연락처"]),
+        memberName: record["이름"] || "",
+        memberEmail: record["이메일"] || "",
+        memberAddress: record["주소"] || "",
+        memberNo: "",
+        joinedAt: record["접수일시"] || "",
+        referrer: record["추천인"] || "",
+        updatedAtText: record["저장일시"] || "",
+        source: "googleSheet"
+      }));
   }
 
   function collectLocalReferralMembers(referrerName, users) {
