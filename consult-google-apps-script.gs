@@ -4,6 +4,7 @@ var SPREADSHEET_ID = "1yRArb4zM59y4-NW8ncvosaghzPdRRyYrnM5cwMVr2DY";
 var CONSULT_SHEET_NAME = "\uC0C1\uB2F4";
 var ORDER_SHEET_NAME = "\uC8FC\uBB38";
 var MEMBER_SHEET_NAME = "\uBA64\uBC84";
+var LEGACY_ALERT_SHEET_NAME = "\uC1FC\uD551\uC54C\uB9BC";
 var INSURANCE_SHEET_NAME = "\uBCF4\uD5D8\uC0C1\uB2F4";
 
 function doGet(e) {
@@ -54,12 +55,33 @@ function appendMember_(data, type) {
     data.referrer || "",
     data.page || ""
   ));
+  appendMemberAlert_(data, isLogin);
 
   if (!isLogin) {
     var mailResult = sendAdminMail_("IRIS MAPPING LAB Member signup", buildMemberSignupBody_(data));
     return json_({ ok: true, success: true, saved: true, sheet: MEMBER_SHEET_NAME, emailSent: mailResult.sent, emailError: mailResult.error });
   }
   return json_({ ok: true, success: true, saved: true, sheet: MEMBER_SHEET_NAME });
+}
+
+function appendMemberAlert_(data, isLogin) {
+  var sheet = getSheet_(LEGACY_ALERT_SHEET_NAME, headersAlert_());
+  var referrerText = data.referrer ? "\uCD94\uCC9C\uC778: " + data.referrer : "";
+  sheet.appendRow(Array.of(
+    new Date(),
+    data.loginAt || data.createdAt || data.joinedAt || new Date().toISOString(),
+    isLogin ? "member_login" : "member",
+    data.name || "",
+    data.phone || data.phoneKey || "",
+    data.email || "",
+    data.referrer || "",
+    data.address || "",
+    referrerText,
+    "",
+    "",
+    "",
+    data.page || ""
+  ));
 }
 
 function appendConsult_(data, type) {
@@ -139,6 +161,10 @@ function appendInsuranceConsult_(data, type) {
 
 function headersMember_() {
   return "\uC800\uC7A5\uC77C\uC2DC,\uAD6C\uBD84,\uAC00\uC785\uC77C\uC2DC/\uB85C\uADF8\uC778\uC77C\uC2DC,\uD68C\uC6D0\uBC88\uD638,\uC774\uB984,\uC804\uD654\uBC88\uD638,\uC815\uADDC\uD654\uC804\uD654\uBC88\uD638,\uC774\uBA54\uC77C,\uC8FC\uC18C,\uCD94\uCC9C\uC778,\uD398\uC774\uC9C0".split(",");
+}
+
+function headersAlert_() {
+  return "\uC800\uC7A5\uC77C\uC2DC,\uC811\uC218\uC77C\uC2DC,\uAD6C\uBD84,\uC774\uB984,\uC5F0\uB77D\uCC98,\uC774\uBA54\uC77C,\uC0C1\uB2F4 \uAC00\uB2A5 \uC2DC\uAC04,\uC8FC\uC18C,\uBB38\uC758\uB0B4\uC6A9,\uC8FC\uBB38\uBC88\uD638,\uC8FC\uBB38\uC0C1\uD488,\uCD1D\uAE08\uC561,\uD398\uC774\uC9C0".split(",");
 }
 
 function headersConsult_() {

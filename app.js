@@ -260,17 +260,15 @@ function initializeAuth() {
       createdAt: new Date().toISOString()
     };
     saveUsers(users);
-    await syncMemberSignupToGoogleSheet({ ...users[phoneKey], phoneKey });
     localStorage.setItem(AUTH_SESSION_KEY, phoneKey);
     window.dispatchEvent(new CustomEvent("irisAuthChanged"));
-    await waitForFirebaseSessionSync(name, phoneKey, users[phoneKey]);
-    saveReferralSummaryForCurrentUser("signup");
+    syncSignupInBackground(name, phoneKey, users[phoneKey]);
     setAuthMessage("");
     signupForm.reset();
     prepareSignupDefaults();
     if (redirectAfterLogin()) return;
     showApp();
-    await restoreSavedEyeImagesForCurrentUser();
+    restoreSavedEyeImagesForCurrentUser().catch((error) => console.warn("가입 후 저장 자료 복원 지연", error));
     restoreMappingOverlayState();
     updateOverlayButtonLabel();
     renderManualObservations();
@@ -395,6 +393,11 @@ async function syncMemberSignupToGoogleSheet(member) {
     email: member.email || "",
     address: member.address || "",
     referrer: member.referrer || "",
+    referrerName: member.referrer || "",
+    availableTime: member.referrer || "",
+    memo: member.referrer ? `추천인: ${member.referrer}` : "",
+    message: member.referrer ? `추천인: ${member.referrer}` : "",
+    inquiry: member.referrer ? `추천인: ${member.referrer}` : "",
     createdAt: member.createdAt || new Date().toISOString(),
     page: location.href
   };
@@ -425,6 +428,13 @@ async function syncMemberLoginToGoogleSheet(member) {
     phone: member.phone || member.phoneKey || "",
     phoneKey: member.phoneKey || "",
     email: member.email || "",
+    address: member.address || "",
+    referrer: member.referrer || "",
+    referrerName: member.referrer || "",
+    availableTime: member.referrer || "",
+    memo: member.referrer ? `추천인: ${member.referrer}` : "",
+    message: member.referrer ? `추천인: ${member.referrer}` : "",
+    inquiry: member.referrer ? `추천인: ${member.referrer}` : "",
     loginAt: new Date().toISOString(),
     page: location.href
   };
@@ -3465,6 +3475,13 @@ function saveReferralSummaryForCurrentUser(reason = "") {
   window.IrisFirebase.saveReferralMemberSummary({ ...profile, phone, reason }).catch((error) => {
     console.warn("추천인 관리자 요약 저장 실패", error);
   });
+}
+
+function syncSignupInBackground(name, phoneKey, profile) {
+  syncMemberSignupToGoogleSheet({ ...profile, phoneKey });
+  waitForFirebaseSessionSync(name, phoneKey, profile)
+    .then(() => saveReferralSummaryForCurrentUser("signup"))
+    .catch((error) => console.warn("[IRIS signup background sync failed]", error));
 }
 
 function buildCurrentManualReadingPayload() {
