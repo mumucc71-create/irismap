@@ -100,6 +100,7 @@
       const url = new URL(MEMBER_SHEET_GVIZ_URL);
       url.searchParams.set("sheet", "멤버");
       url.searchParams.set("tqx", `out:json;responseHandler:${callbackName}`);
+      url.searchParams.set("tq", `select * where G = '${escapeQueryString(referrerName)}'`);
       script.src = url.toString();
       script.onerror = () => cleanup([]);
       document.head.appendChild(script);
@@ -256,6 +257,10 @@
 
   function normalizeName(value) {
     return String(value || "").replace(/\s+/g, "").trim().toLowerCase();
+  }
+
+  function escapeQueryString(value) {
+    return String(value || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
   }
 
   function readJson(key, fallback) {
