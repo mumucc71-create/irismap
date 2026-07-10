@@ -9,6 +9,7 @@
   const refreshButton = document.querySelector("#refreshButton");
 
   refreshButton?.addEventListener("click", () => loadReferralDashboard());
+  window.addEventListener("irisFirebaseReadyForApp", () => loadReferralDashboard());
   loadReferralDashboard();
 
   async function loadReferralDashboard() {
@@ -16,7 +17,7 @@
     const users = readJson(USERS_KEY, {});
     let currentMember = phone ? users?.[phone] : null;
 
-    await waitForFirebase();
+    await waitForFirebaseSession(phone);
     if ((!currentMember?.name || !currentMember?.phone) && window.IrisFirebase?.getMemberProfile) {
       const profile = await window.IrisFirebase.getMemberProfile().catch(() => null);
       if (profile) currentMember = { ...currentMember, ...profile };
@@ -138,16 +139,18 @@
     }).join("");
   }
 
-  function waitForFirebase() {
+  function waitForFirebaseSession(phone) {
     return new Promise((resolve) => {
-      if (window.IrisFirebase?.ready || !window.IRIS_FIREBASE_CONFIG) {
+      if (!window.IRIS_FIREBASE_CONFIG) {
         resolve();
         return;
       }
       let count = 0;
       const timer = setInterval(() => {
         count += 1;
-        if (window.IrisFirebase?.ready || count > 40) {
+        const ready = Boolean(window.IrisFirebase?.ready);
+        const signedIn = !phone || Boolean(window.IrisFirebase?.getCurrentUser?.());
+        if ((ready && signedIn) || count > 80) {
           clearInterval(timer);
           resolve();
         }
