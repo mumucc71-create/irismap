@@ -175,7 +175,7 @@
   </main>
   <script src="iris-organ-db.js"></script>
   <script src="care-engine.js"></script>
-  <script src="integrated-reading-engine.js?v=20260624-lifestyle-category-1"></script>
+  <script src="integrated-reading-engine.js?v=20260710-questionnaire-map-1"></script>
   <script>
     const sessionPhone = normalizePhone(localStorage.getItem("irisMappingSession"));
     const iris = readJson("irisReadingResult");
@@ -349,14 +349,14 @@
 
     function comparisonThemes() {
       return [
-        {hours:[11,12,1],title:"뇌·신경·정서",keywords:["뇌","신경","두통","어지","기억","집중","수면","불안","우울","스트레스","감정"],fieldNames:["sleepDifficulty","wakeAtDawn","tiredAfterSleep","daytimeSleepiness","fatigue","headache","dizziness","fainting","numbness","weakness","tremor","memory","seizure","depressedMood","panicFeeling","attentionDifficulty","futureAnxiety"]},
-        {hours:[2,3],title:"폐·기관지·호흡",keywords:["폐","기관지","호흡","기침","가래","천식","비염","흉부"],fieldNames:["cough","phlegm","shortnessBreath","wheezing","chestTightness","recurrentRespiratory","rhinitis","allergicRhinitis","sinusitis"]},
-        {hours:[4],title:"위·췌장·소화",keywords:["위","췌장","소화","복부","위산","속쓰림","구토"],fieldNames:["indigestion","bloating","nausea","reflux","abdominalPain"]},
-        {hours:[5,6],title:"신장·비뇨·골반",keywords:["신장","요관","소변","비뇨","방광","골반","생식","전립선","여성"],fieldNames:["frequentUrine","nocturia","painfulUrine","incompleteUrine","urineLeak","bloodUrine","darkFoamyUrine","flankPain","weakUrineFlow","prostateDiscomfort"]},
-        {hours:[7],title:"간·담낭",keywords:["간","담낭","간수치","황달","음주","숙취"],fieldNames:["jaundice","fatigue","alcoholUse","drinkingFrequency","hangover","liverDisease"]},
-        {hours:[8],title:"장·비장·면역",keywords:["소장","대장","장","변비","설사","비장","면역"],fieldNames:["constipation","diarrhea","stoolChange","bloodStool","recurrentInflammationArea"]},
-        {hours:[9],title:"심장·순환·흉부",keywords:["심장","순환","혈압","가슴","두근","혈관","판막"],fieldNames:["chestPain","palpitations","coldHandsFeet","standingDizziness","legSwelling","legVeins","easyBruising","heartUltrasound","heartProcedure","heartValve"]},
-        {hours:[10],title:"목·어깨·림프·갑상선",keywords:["목","어깨","림프","갑상선","편도"],fieldNames:["soreThroat","neckSwelling","tonsillitis","neckBackPain"]}
+        {hours:[11,12,1],title:"뇌·신경·정서",keywords:["뇌","신경","두통","어지","기억","집중","수면","불안","우울","스트레스","감정"],fieldNames:["sleepFatigueSymptoms","neuroSenseSymptoms","mentalHealthItems","stressEmotionItems","lifestyleRhythmItems"]},
+        {hours:[2,3],title:"폐·기관지·호흡",keywords:["폐","기관지","호흡","기침","가래","천식","비염","흉부"],fieldNames:["respiratorySymptoms","smokingRespiratoryItems","entDiseases","immuneInfectionItems","homeEnvironmentItems"]},
+        {hours:[4],title:"위·췌장·소화",keywords:["위","췌장","소화","복부","위산","속쓰림","구토"],fieldNames:["digestiveSymptoms","foodReactions","metabolicSymptoms","favoriteFoods"]},
+        {hours:[5,6],title:"신장·비뇨·골반",keywords:["신장","요관","소변","비뇨","방광","골반","생식","전립선","여성"],fieldNames:["urinarySymptoms","maleHealthItems","femaleHistories","postpartumSymptoms","coldSensitivityItems"]},
+        {hours:[7],title:"간·담낭",keywords:["간","담낭","간수치","황달","음주","숙취"],fieldNames:["digestiveSymptoms","hangover","foodReactions","favoriteFoods"]},
+        {hours:[8],title:"장·비장·면역",keywords:["소장","대장","장","변비","설사","비장","면역"],fieldNames:["digestiveSymptoms","immuneInfectionItems","inflammationItems","skinLymphSymptoms"]},
+        {hours:[9],title:"심장·순환·흉부",keywords:["심장","순환","혈압","가슴","두근","혈관","판막"],fieldNames:["circulationSymptoms","heartHistories"]},
+        {hours:[10],title:"목·어깨·림프·갑상선",keywords:["목","어깨","림프","갑상선","편도"],fieldNames:["musculoskeletalSymptoms","postureSpineItems","hormoneMetabolismItems","entDiseases","immuneInfectionItems"]}
       ];
     }
 
@@ -467,11 +467,19 @@
       }
       const confidence=result.confidence;
       const confidenceHtml=`<div class="quick-confidence"><span>문진 일치도<strong>${confidence.irisQuestionnaire===null?"확인 불가":confidence.irisQuestionnaire+"%"}</strong></span><span>종합 신뢰도<strong>${confidence.overall===null?confidence.overallLabel:confidence.overall+"%"}</strong></span></div>`;
-      const questionnaireWarning=!result.hasQuestionnaire?'<p class="low-confidence">문진이 없어 종합 결과의 신뢰도를 낮게 표시합니다. 홍채 관찰값은 후보 확인에만 반영됩니다. <a class="missing-link" href="health.html">라이프케어진단 작성하기</a></p>':'';
-      const ranks=result.results.map((group,index)=>{
+      if(!result.hasQuestionnaire){
+        target.innerHTML=confidenceHtml+'<p class="low-confidence">라이프진단 문진 근거가 없어 장기별 순위를 표시하지 않습니다. 홍채 관찰값만으로는 종합 결과를 확정할 수 없습니다. <a class="missing-link" href="health.html">라이프케어진단 작성하기</a></p>';
+        return;
+      }
+      const matchedResults=result.results.filter((group)=>(group.selected.currentQuestionnaireMatches||group.selected.questionnaireMatches||[]).length);
+      if(!matchedResults.length){
+        target.innerHTML=confidenceHtml+'<p class="low-confidence">현재 라이프진단 응답과 직접 일치하는 장기 영역이 없습니다. 홍채 관찰값은 후보 확인 자료로만 보관하고, 종합 순위는 표시하지 않습니다.</p>';
+        return;
+      }
+      const ranks=matchedResults.map((group,index)=>{
         const selected=group.selected;
         const currentQuestionnaire=selected.currentQuestionnaireMatches||selected.questionnaireMatches||[];
-        const signals=currentQuestionnaire.length?currentQuestionnaire.slice(0,2).map((item)=>item.label).join(", "):"현재 문진 일치 항목 없음";
+        const signals=currentQuestionnaire.slice(0,2).map((item)=>item.label).join(", ");
         const evidence=[];
         if(selected.pastHealthMatches?.length)evidence.push("과거 치료");
         if(selected.historyMatches.length)evidence.push("병력 PDF");
@@ -479,7 +487,7 @@
         if(selected.irisItems.length)evidence.push("홍채 교차확인");
         return `<article class="quick-rank-card"><h3><span><span class="quick-rank-number">${index+1}순위</span> ${escapeHtml(selected.name)}</span><span class="meta">${escapeHtml(selected.managementPriority)}</span></h3><p class="quick-rank-signals">${escapeHtml(signals)}</p><p>문진 일치도 <strong>${selected.questionnaireMatchPercent===null?"확인 불가":selected.questionnaireMatchPercent+"%"}</strong></p><div class="evidence-tags">${(evidence.length?evidence:["추가 자료 필요"]).map((item)=>`<span>${escapeHtml(item)}</span>`).join("")}</div></article>`;
       }).join("");
-      target.innerHTML=confidenceHtml+questionnaireWarning+`<div class="quick-result-grid">${ranks}</div>`;
+      target.innerHTML=confidenceHtml+`<div class="quick-result-grid">${ranks}</div>`;
     }
 
     function renderManualStarSummary() {

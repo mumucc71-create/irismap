@@ -17,6 +17,33 @@
   const REPEATED_VALUES=new Set(["자주","거의 매일","매우심함","심함","재발 있음","현재 불편감","후유증"]);
   const NEUTRAL_VALUES=new Set(["","아니오","전혀 아니다","없음","해당 없음","정상","모름","잘 모름","미기록","특별히 없음","통증 없음"]);
   const LIFESTYLE_GROUPS=new Set(["lifestyle","diet","stress","occupation","riskEnvironment"]);
+  const CANDIDATE_FIELD_NAMES={
+    eyeFace:["eyeEarMouthSymptoms","visionStatus","eyeDiseases","eyeDiscomforts","eyeSurgeryHistory","skinScalpDiseases","skinSunReactions","dentalSymptoms","pediatricHealthItems"],
+    bronchial:["respiratorySymptoms","smokingRespiratoryItems","entDiseases","immuneInfectionItems","homeEnvironmentItems","pediatricHealthItems"],
+    lung:["respiratorySymptoms","smokingRespiratoryItems","circulationSymptoms","homeEnvironmentItems","pediatricHealthItems"],
+    stomach:["digestiveSymptoms","foodReactions","favoriteFoods"],
+    pancreas:["metabolicSymptoms","foodReactions","healthEffortItems"],
+    digestive:["digestiveSymptoms","foodReactions","pediatricHealthItems"],
+    kidney:["urinarySymptoms","circulationSymptoms"],
+    urinary:["urinarySymptoms","maleHealthItems","femaleHistories"],
+    pelvis:["postpartumSymptoms","coldSensitivityItems","musculoskeletalSymptoms","postureSpineItems","femaleHistories","femaleChangeItems"],
+    female:["femaleHistories","femaleChangeItems","femaleHormoneItems","postpartumSymptoms"],
+    male:["maleHealthItems"],
+    liver:["digestiveSymptoms","hangover","favoriteFoods"],
+    gallbladder:["digestiveSymptoms","foodReactions","favoriteFoods"],
+    smallBowel:["digestiveSymptoms","foodReactions","immuneInfectionItems"],
+    bowel:["digestiveSymptoms","foodReactions","coldSensitivityItems","pediatricHealthItems"],
+    spleen:["immuneInfectionItems","skinLymphSymptoms","inflammationItems","metabolicSymptoms"],
+    lymph:["immuneInfectionItems","skinLymphSymptoms","inflammationItems","homeEnvironmentItems"],
+    heartCirculation:["circulationSymptoms","heartHistories"],
+    breast:["femaleHormoneItems","femaleChangeItems"],
+    neck:["postureSpineItems","musculoskeletalSymptoms","eyeEarMouthSymptoms","entDiseases","hormoneMetabolismItems"],
+    shoulder:["postureSpineItems","musculoskeletalSymptoms"],
+    thyroid:["hormoneMetabolismItems","metabolicSymptoms"],
+    tonsil:["entDiseases","immuneInfectionItems","eyeEarMouthSymptoms"],
+    brainSensory:["neuroSenseSymptoms","sleepFatigueSymptoms","eyeEarMouthSymptoms","visionStatus","eyeDiseases","eyeDiscomforts"],
+    brainNerve:["neuroSenseSymptoms","sleepFatigueSymptoms","stressEmotionItems","mentalHealthItems","lifestyleRhythmItems","upperElementaryItems"]
+  };
 
   function area(id,name,keywords,historyAreas){return{id,name,keywords,historyAreas}}
   function readJson(key){try{return JSON.parse(localStorage.getItem(key)||"null")}catch(_){return null}}
@@ -126,7 +153,11 @@
     const text=`${item?.name||""} ${item?.label||""} ${values(item?.value).join(" ")}`;
     return /History|Diagnosis|Surgery|Procedure|past|과거|수술|시술|병원 진단|재발|후유증/i.test(text);
   }
-  function matchesCandidate(item,candidate){const text=itemText(item);return candidate.keywords.some((keyword)=>text.includes(keyword))}
+  function matchesCandidate(item,candidate){
+    if((CANDIDATE_FIELD_NAMES[candidate.id]||[]).includes(item?.name))return true;
+    const text=itemText(item);
+    return candidate.keywords.some((keyword)=>text.includes(keyword));
+  }
   function matchHistory(candidate,universe){
     if(!universe)return[];
     const scores=Array.isArray(universe.부위별점수JSON)?universe.부위별점수JSON:[];
