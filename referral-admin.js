@@ -35,14 +35,12 @@
 
     ownerTarget.innerHTML = `<strong>${escapeHtml(referrerName)}</strong> 님을 추천인으로 등록한 회원입니다.`;
 
-    let remoteMembers = [];
-    if (window.IrisFirebase?.listReferralMembers) {
-      remoteMembers = await window.IrisFirebase.listReferralMembers(referrerName).catch((error) => {
-        console.warn("회원DB Firebase 목록을 불러오지 못했습니다.", error);
-        return [];
-      });
-    }
-
+    const remoteMembers = window.IrisFirebase?.listReferralMembers
+      ? await window.IrisFirebase.listReferralMembers(referrerName).catch((error) => {
+          console.warn("회원DB Firebase 목록을 불러오지 못했습니다.", error);
+          return [];
+        })
+      : [];
     const sheetMembers = await listReferralMembersFromSheet(referrerName);
     const localMembers = collectLocalReferralMembers(referrerName, users);
     const members = mergeMembers(remoteMembers, sheetMembers, localMembers);
