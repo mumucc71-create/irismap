@@ -262,6 +262,7 @@ function initializeAuth() {
     await syncMemberSignupToGoogleSheet({ ...users[phoneKey], phoneKey });
     localStorage.setItem(AUTH_SESSION_KEY, phoneKey);
     window.dispatchEvent(new CustomEvent("irisAuthChanged"));
+    await waitForFirebaseSessionSync(name, phoneKey, users[phoneKey]);
     setAuthMessage("");
     signupForm.reset();
     prepareSignupDefaults();
@@ -296,6 +297,7 @@ function initializeAuth() {
     syncMemberLoginToGoogleSheet({ ...user, phoneKey });
     localStorage.setItem(AUTH_SESSION_KEY, phoneKey);
     window.dispatchEvent(new CustomEvent("irisAuthChanged"));
+    await waitForFirebaseSessionSync(name, phoneKey, user);
     setAuthMessage("");
     loginForm.reset();
     if (redirectAfterLogin()) return;
@@ -334,6 +336,24 @@ function redirectAfterLogin() {
   if (!/^[\w.-]+\.html(?:[?#].*)?$/.test(cleanTarget)) return false;
   location.href = cleanTarget;
   return true;
+}
+
+async function waitForFirebaseSessionSync(name, phoneKey, profile) {
+  const startedAt = Date.now();
+  const timeoutMs = 4500;
+  while (!window.IrisFirebase?.signInWithPhoneName && Date.now() - startedAt < timeoutMs) {
+    await new Promise((resolve) => setTimeout(resolve, 120));
+  }
+  const api = window.IrisFirebase;
+  if (!api?.signInWithPhoneName) return false;
+  try {
+    await api.signInWithPhoneName(name || profile?.name || "", phoneKey, { ...profile, phone: profile?.phone || phoneKey });
+    await api.syncNow?.();
+    return true;
+  } catch (error) {
+    console.warn("[IRIS Firebase login sync skipped]", error);
+    return false;
+  }
 }
 
 function getUsers() {

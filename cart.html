@@ -288,6 +288,6 @@
   function readJson(key, fallback) { try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; } catch (_) { return fallback; } }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char])); }
 </script>
-<script src="site-navigation.js?v=20260630-marker-sync-1"></script>
+<script src="site-navigation.js?v=20260710-cross-browser-sync-1"></script>
 </body>
 </html>

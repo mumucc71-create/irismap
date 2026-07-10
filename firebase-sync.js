@@ -10,6 +10,7 @@ const LEGACY_ANALYSIS_DOC_ID = "latest";
 
 const managedKeyPatterns = [
   /^iris/i,
+  /^UniverseReportDB$/,
   /^UniverseReportDB:/,
   /^previousIrisPhoto$/,
   /^member/i

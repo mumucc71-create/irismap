@@ -22,9 +22,9 @@
       <article class="card danger-card"><h2>테스트 데이터 초기화</h2><p>현재 로그인한 Firebase 계정의 테스트 데이터만 삭제합니다. Firestore, localStorage, sessionStorage를 비우고 로그아웃합니다.</p><button id="resetCurrentUserDataButton" class="danger-button" type="button">현재 계정 초기화</button><div id="resetCurrentUserDataStatus" class="reset-status" aria-live="polite"></div></article>
     </section>
   </main>
-  <script src="site-navigation.js?v=20260630-marker-sync-1"></script>
-  <script src="firebase-config.js?v=20260630-reset-1"></script>
-  <script src="firebase-sync.js?v=20260630-reset-1"></script>
+  <script src="site-navigation.js?v=20260710-cross-browser-sync-1"></script>
+  <script src="firebase-config.js?v=20260710-cross-browser-sync-1"></script>
+  <script src="firebase-sync.js?v=20260710-cross-browser-sync-1"></script>
   <script>
     const phone=String(localStorage.getItem("irisMappingSession")||"").replace(/\D/g,"");
     const has=(key)=>Boolean(localStorage.getItem(key));
