@@ -787,6 +787,7 @@ observationStrengthButtons?.addEventListener("click", (event) => {
   if (!marker) return;
   marker.strength = state.manualObservationStrength;
   renderManualObservations();
+  syncManualReadingResult();
   scheduleEyeStatePersistence(state.activeEye);
 });
 
@@ -802,7 +803,6 @@ deleteObservationButton?.addEventListener("click", () => {
   draw();
   syncManualReadingResult();
   scheduleEyeStatePersistence(state.activeEye);
-  clearIrisReadingResult();
 });
 
 clearObservationsButton?.addEventListener("click", () => {
@@ -817,11 +817,10 @@ clearObservationsButton?.addEventListener("click", () => {
   draw();
   syncManualReadingResult();
   scheduleEyeStatePersistence(state.activeEye);
-  clearIrisReadingResult();
 });
 
-saveIrisSessionButton?.addEventListener("click", () => {
-  saveCurrentIrisSnapshot();
+saveIrisSessionButton?.addEventListener("click", async () => {
+  await saveCurrentIrisSnapshot({ openFinalReport: true });
 });
 
 loadIrisSessionButton?.addEventListener("click", async () => {
@@ -1056,7 +1055,6 @@ canvas.addEventListener("click", (event) => {
   draw();
   syncManualReadingResult();
   scheduleEyeStatePersistence(state.activeEye);
-  clearIrisReadingResult();
 });
 
 async function setEyeImage(eyeKey, file) {
@@ -1426,7 +1424,7 @@ function buildManualObservationText() {
   }).join("\n");
 }
 
-async function saveCurrentIrisSnapshot() {
+async function saveCurrentIrisSnapshot(options = {}) {
   if (!window.IrisFirebase?.getCurrentUser?.()?.uid) {
     setIrisSaveStatus("로그인 후 저장할 수 있습니다.", true);
     return;
@@ -1437,11 +1435,16 @@ async function saveCurrentIrisSnapshot() {
   }
   try {
     setIrisSaveStatus("저장 중입니다...");
+    syncManualReadingResult();
+    await persistAllEyeStates();
     const payload = await buildIrisSnapshotPayload();
     await window.IrisFirebase.saveIrisSnapshot(payload);
     localStorage.setItem("irisSnapshotCache:lastSavedAt", payload.savedAt);
     setIrisSaveStatus("저장되었습니다.");
     await refreshIrisSnapshotList();
+    if (options.openFinalReport) {
+      window.location.href = "final-report.html";
+    }
   } catch (error) {
     console.warn("홍채사진 저장 실패", error);
     setIrisSaveStatus("저장에 실패했습니다.", true);
@@ -1554,7 +1557,7 @@ async function resetCurrentIrisPoints() {
   draw();
   updateUiEnabled();
   await persistAllEyeStates();
-  clearIrisReadingResult();
+  syncManualReadingResult();
   setIrisSaveStatus("점과 관찰 설명을 초기화했습니다. 사진은 유지됩니다.");
 }
 
@@ -1700,7 +1703,7 @@ async function restoreSavedEyeImagesForCurrentUser(options = {}) {
   for (const [index, eyeKey] of ["right", "left"].entries()) {
     let record = records[index];
     const firebaseRecord = firebaseAnalysis?.[eyeKey] || null;
-    if (firebaseRecord?.blob) {
+    if (firebaseRecord?.blob && (options.preferFirebase || !record?.blob)) {
       record = firebaseRecord;
     }
     if (!record?.blob) {
