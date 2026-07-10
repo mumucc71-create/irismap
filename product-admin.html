@@ -103,6 +103,11 @@
   </section>
 </main>
 <script src="shopping-recommendation-db.js"></script>
+<script>
+  if(localStorage.getItem("irisShoppingAdminLoggedInV2")!=="1"){
+    location.replace("admin.html");
+  }
+</script>
 <script src="product-admin.js"></script>
 </body>
 </html>
