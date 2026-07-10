@@ -10,19 +10,23 @@
   const metricsTarget = document.querySelector("#metrics");
   const ownerTarget = document.querySelector("#ownerStatus");
   const refreshButton = document.querySelector("#refreshButton");
+  let loadRequestId = 0;
 
   refreshButton?.addEventListener("click", () => loadMemberDb());
   window.addEventListener("irisFirebaseReadyForApp", () => loadMemberDb());
   loadMemberDb();
 
   async function loadMemberDb() {
+    const requestId = ++loadRequestId;
     const phone = normalizePhone(localStorage.getItem(SESSION_KEY));
     const users = readJson(USERS_KEY, {});
     let currentMember = phone ? users?.[phone] : null;
 
     await waitForFirebaseSession(phone);
+    if (requestId !== loadRequestId) return;
     if ((!currentMember?.name || !currentMember?.phone) && window.IrisFirebase?.getMemberProfile) {
       const profile = await window.IrisFirebase.getMemberProfile().catch(() => null);
+      if (requestId !== loadRequestId) return;
       if (profile) currentMember = { ...currentMember, ...profile };
     }
 
@@ -42,7 +46,9 @@
           return [];
         })
       : [];
+    if (requestId !== loadRequestId) return;
     const sheetMembers = await listReferralMembersFromSheet(referrerName);
+    if (requestId !== loadRequestId) return;
     const localMembers = collectLocalReferralMembers(referrerName, users);
     const members = mergeMembers(remoteMembers, sheetMembers, localMembers);
     renderMetrics(members);
