@@ -673,15 +673,7 @@ async function saveReferralMemberSummary(profile = {}) {
     referrerKey: normalizeReferralName(referrer),
     irisSummary: summary
   };
-  const referrerKey = payload.referrerKey;
   await setDoc(doc(db, "referralMembers", currentUser.uid), payload, { merge: true });
-  await setDoc(doc(db, "referrers", referrerKey), {
-    referrer,
-    referrerKey,
-    updatedAt: serverTimestamp(),
-    updatedAtText: payload.updatedAtText
-  }, { merge: true });
-  await setDoc(doc(db, "referrers", referrerKey, "members", phone), payload, { merge: true });
   return payload;
 }
 
@@ -690,18 +682,8 @@ async function listReferralMembers(referrerName) {
   const referrerKey = normalizeReferralName(referrerName);
   if (!referrerKey) return [];
   const { collection, getDocs, query, where } = firebaseApi.firestoreModule;
-  let docs = [];
-  try {
-    const snap = await getDocs(collection(db, "referrers", referrerKey, "members"));
-    docs = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
-  } catch (error) {
-    logError("firestore:referrer-members:read:error", error);
-  }
-  if (!docs.length) {
-    const snap = await getDocs(query(collection(db, "referralMembers"), where("referrerKey", "==", referrerKey))).catch(() => null);
-    docs = snap?.docs?.map((item) => ({ id: item.id, ...item.data() })) || [];
-  }
-  return docs
+  const snap = await getDocs(query(collection(db, "referralMembers"), where("referrerKey", "==", referrerKey)));
+  return snap.docs.map((item) => ({ id: item.id, ...item.data() }))
     .sort((a, b) => String(b.updatedAtText || b.joinedAt || "").localeCompare(String(a.updatedAtText || a.joinedAt || "")));
 }
 

@@ -3,7 +3,6 @@ var SPREADSHEET_ID = "1yRArb4zM59y4-NW8ncvosaghzPdRRyYrnM5cwMVr2DY";
 
 var CONSULT_SHEET_NAME = "\uC0C1\uB2F4";
 var ORDER_SHEET_NAME = "\uC8FC\uBB38";
-var MEMBER_SHEET_NAME = "\uBA64\uBC84";
 var LEGACY_ALERT_SHEET_NAME = "\uC1FC\uD551\uC54C\uB9BC";
 var INSURANCE_SHEET_NAME = "\uBCF4\uD5D8\uC0C1\uB2F4";
 
@@ -35,33 +34,19 @@ function doPost(e) {
 function setupTabs() {
   getSheet_(CONSULT_SHEET_NAME, headersConsult_());
   getSheet_(ORDER_SHEET_NAME, headersOrder_());
-  getSheet_(MEMBER_SHEET_NAME, headersMember_());
+  getSheet_(LEGACY_ALERT_SHEET_NAME, headersAlert_());
   getSheet_(INSURANCE_SHEET_NAME, headersInsurance_());
 }
 
 function appendMember_(data, type) {
   var isLogin = type === "member_login";
-  var sheet = getSheet_(MEMBER_SHEET_NAME, headersMember_());
-  sheet.appendRow(Array.of(
-    new Date(),
-    isLogin ? "\uB85C\uADF8\uC778" : "\uD68C\uC6D0\uAC00\uC785",
-    data.loginAt || data.createdAt || data.joinedAt || new Date().toISOString(),
-    data.memberNo || "",
-    data.name || "",
-    data.phone || "",
-    data.phoneKey || "",
-    data.email || "",
-    data.address || "",
-    data.referrer || "",
-    data.page || ""
-  ));
   appendMemberAlert_(data, isLogin);
 
   if (!isLogin) {
     var mailResult = sendAdminMail_("IRIS MAPPING LAB Member signup", buildMemberSignupBody_(data));
-    return json_({ ok: true, success: true, saved: true, sheet: MEMBER_SHEET_NAME, emailSent: mailResult.sent, emailError: mailResult.error });
+    return json_({ ok: true, success: true, saved: true, sheet: LEGACY_ALERT_SHEET_NAME, emailSent: mailResult.sent, emailError: mailResult.error });
   }
-  return json_({ ok: true, success: true, saved: true, sheet: MEMBER_SHEET_NAME });
+  return json_({ ok: true, success: true, saved: true, sheet: LEGACY_ALERT_SHEET_NAME });
 }
 
 function appendMemberAlert_(data, isLogin) {
@@ -159,10 +144,6 @@ function appendInsuranceConsult_(data, type) {
   return json_({ ok: true, success: true, saved: true, sheet: INSURANCE_SHEET_NAME, emailSent: mailResult.sent, emailError: mailResult.error });
 }
 
-function headersMember_() {
-  return "\uC800\uC7A5\uC77C\uC2DC,\uAD6C\uBD84,\uAC00\uC785\uC77C\uC2DC/\uB85C\uADF8\uC778\uC77C\uC2DC,\uD68C\uC6D0\uBC88\uD638,\uC774\uB984,\uC804\uD654\uBC88\uD638,\uC815\uADDC\uD654\uC804\uD654\uBC88\uD638,\uC774\uBA54\uC77C,\uC8FC\uC18C,\uCD94\uCC9C\uC778,\uD398\uC774\uC9C0".split(",");
-}
-
 function headersAlert_() {
   return "\uC800\uC7A5\uC77C\uC2DC,\uC811\uC218\uC77C\uC2DC,\uAD6C\uBD84,\uC774\uB984,\uC5F0\uB77D\uCC98,\uC774\uBA54\uC77C,\uC0C1\uB2F4 \uAC00\uB2A5 \uC2DC\uAC04,\uC8FC\uC18C,\uBB38\uC758\uB0B4\uC6A9,\uC8FC\uBB38\uBC88\uD638,\uC8FC\uBB38\uC0C1\uD488,\uCD1D\uAE08\uC561,\uD398\uC774\uC9C0".split(",");
 }
@@ -190,7 +171,7 @@ function getSheet_(name, headers) {
 
 function listReferralMembers_(referrer) {
   var referrerKey = normalizeReferralName_(referrer);
-  var sheet = getSheet_(MEMBER_SHEET_NAME, headersMember_());
+  var sheet = getSheet_(LEGACY_ALERT_SHEET_NAME, headersAlert_());
   var rows = sheet.getDataRange().getValues();
   if (rows.length <= 1 || !referrerKey) return json_({ ok: true, success: true, members: [] });
 
@@ -198,17 +179,20 @@ function listReferralMembers_(referrer) {
   var membersByPhone = {};
   rows.slice(1).forEach(function(row) {
     var record = rowToObject_(headers, row);
-    if (normalizeReferralName_(record["\uCD94\uCC9C\uC778"]) !== referrerKey) return;
-    var phone = normalizePhone_(record["\uC815\uADDC\uD654\uC804\uD654\uBC88\uD638"] || record["\uC804\uD654\uBC88\uD638"]);
+    var type = String(record["\uAD6C\uBD84"] || "").trim();
+    if (type !== "member" && type !== "member_login") return;
+    var rowReferrer = extractReferrer_(record);
+    if (normalizeReferralName_(rowReferrer) !== referrerKey) return;
+    var phone = normalizePhone_(record["\uC5F0\uB77D\uCC98"]);
     if (!phone) return;
     membersByPhone[phone] = {
       memberPhone: phone,
       memberName: record["\uC774\uB984"] || "",
       memberEmail: record["\uC774\uBA54\uC77C"] || "",
       memberAddress: record["\uC8FC\uC18C"] || "",
-      memberNo: record["\uD68C\uC6D0\uBC88\uD638"] || "",
-      joinedAt: record["\uAC00\uC785\uC77C\uC2DC/\uB85C\uADF8\uC778\uC77C\uC2DC"] || "",
-      referrer: record["\uCD94\uCC9C\uC778"] || "",
+      memberNo: "",
+      joinedAt: record["\uC811\uC218\uC77C\uC2DC"] || "",
+      referrer: rowReferrer,
       updatedAtText: record["\uC800\uC7A5\uC77C\uC2DC"] || "",
       source: "googleSheet"
     };
@@ -226,10 +210,6 @@ function ensureHeaders_(sheet, headers) {
   headers.forEach(function(header) {
     if (current.indexOf(header) !== -1) return;
     var insertIndex = current.length + 1;
-    if (sheet.getName() === MEMBER_SHEET_NAME && header === "\uCD94\uCC9C\uC778") {
-      var pageIndex = current.indexOf("\uD398\uC774\uC9C0");
-      if (pageIndex !== -1) insertIndex = pageIndex + 1;
-    }
     sheet.insertColumnBefore(insertIndex);
     sheet.getRange(1, insertIndex).setValue(header);
     current.splice(insertIndex - 1, 0, header);
@@ -254,6 +234,14 @@ function normalizePhone_(value) {
 
 function normalizeReferralName_(value) {
   return String(value || "").replace(/\s+/g, "").trim().toLowerCase();
+}
+
+function extractReferrer_(record) {
+  var direct = record["\uCD94\uCC9C\uC778"] || record["\uC0C1\uB2F4 \uAC00\uB2A5 \uC2DC\uAC04"] || "";
+  if (direct) return String(direct).replace(/^\s*\uCD94\uCC9C\uC778\s*:\s*/, "").trim();
+  var memo = String(record["\uBB38\uC758\uB0B4\uC6A9"] || "");
+  var match = memo.match(/\uCD94\uCC9C\uC778\s*:\s*([^,\n]+)/);
+  return match ? match[1].trim() : "";
 }
 
 function sendAdminMail_(subject, body) {
