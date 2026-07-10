@@ -264,6 +264,7 @@ function initializeAuth() {
     localStorage.setItem(AUTH_SESSION_KEY, phoneKey);
     window.dispatchEvent(new CustomEvent("irisAuthChanged"));
     await waitForFirebaseSessionSync(name, phoneKey, users[phoneKey]);
+    saveReferralSummaryForCurrentUser("signup");
     setAuthMessage("");
     signupForm.reset();
     prepareSignupDefaults();
@@ -299,6 +300,7 @@ function initializeAuth() {
     localStorage.setItem(AUTH_SESSION_KEY, phoneKey);
     window.dispatchEvent(new CustomEvent("irisAuthChanged"));
     await waitForFirebaseSessionSync(name, phoneKey, user);
+    saveReferralSummaryForCurrentUser("login");
     setAuthMessage("");
     loginForm.reset();
     if (redirectAfterLogin()) return;
@@ -3414,6 +3416,7 @@ function runIrisReading() {
   const payload = buildCurrentManualReadingPayload();
 
   localStorage.setItem("irisReadingResult", JSON.stringify(payload));
+  saveReferralSummaryForCurrentUser("iris-reading-export");
   if (typeof window.renderIrisPersonalDashboard === "function") {
     window.renderIrisPersonalDashboard();
   }
@@ -3444,12 +3447,24 @@ function runIrisReading() {
 function syncManualReadingResult() {
   try {
     localStorage.setItem("irisReadingResult", JSON.stringify(buildCurrentManualReadingPayload()));
+    saveReferralSummaryForCurrentUser("iris-reading");
     if (typeof window.renderIrisPersonalDashboard === "function") {
       window.renderIrisPersonalDashboard();
     }
   } catch (error) {
     console.warn("홍채 수동체크 결과 동기화 실패", error);
   }
+}
+
+function saveReferralSummaryForCurrentUser(reason = "") {
+  const phone = currentPhotoOwnerKey();
+  if (!phone || !window.IrisFirebase?.saveReferralMemberSummary) return;
+  const users = getUsers();
+  const profile = users?.[phone];
+  if (!profile?.referrer) return;
+  window.IrisFirebase.saveReferralMemberSummary({ ...profile, phone, reason }).catch((error) => {
+    console.warn("추천인 관리자 요약 저장 실패", error);
+  });
 }
 
 function buildCurrentManualReadingPayload() {

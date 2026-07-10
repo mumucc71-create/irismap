@@ -36,6 +36,8 @@ const includeFiles = [
   "portal-pages.css",
   "product-admin.html",
   "product-admin.js",
+  "referral-admin.html",
+  "referral-admin.js",
   "reading.html",
   "reservation.html",
   "reservation.js",

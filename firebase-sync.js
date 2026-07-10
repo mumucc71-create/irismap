@@ -50,6 +50,8 @@ window.IrisFirebase = {
   testWrite,
   signOut,
   getMemberProfile,
+  saveReferralMemberSummary,
+  listReferralMembers,
   resetCurrentUserData,
   saveIrisEyeState,
   loadIrisAnalysis,
@@ -233,7 +235,8 @@ async function resetCurrentUserData() {
     doc(db, "users", uid, "orders", "history"),
     doc(db, "users", uid, "consultations", "history"),
     doc(db, "users", uid, "products", "operatorCatalog"),
-    doc(db, "users", uid, "debug", "lastWrite")
+    doc(db, "users", uid, "debug", "lastWrite"),
+    doc(db, "referralMembers", uid)
   ];
 
   for (const ref of documentRefs) {
@@ -557,6 +560,7 @@ async function syncStructuredDocs(uid, snapshot) {
 
   const profile = getCurrentProfile(phone, snapshot);
   if (profile) await saveMemberProfile(uid, phone, profile);
+  if (profile?.referrer) await saveReferralMemberSummary(profile);
 
   logStep("firestore:structured:write:start", { uid });
   const eyeMarkers = collectEyeMarkersFromSnapshot(snapshot, phone);
@@ -641,6 +645,81 @@ async function saveMemberProfile(uid, phone, profile) {
     joinedAt: profile?.joinedAt || profile?.createdAt || ""
   }, { merge: true });
   logStep("firestore:user:write:done", { uid });
+}
+
+async function saveReferralMemberSummary(profile = {}) {
+  if (!firebaseReady || !currentUser?.uid) return null;
+  const phone = normalizePhone(profile.phone || localStorage.getItem(SESSION_KEY));
+  if (!phone) return null;
+  const users = readJson(USERS_KEY, {});
+  const localProfile = users?.[phone] || {};
+  const member = { ...localProfile, ...profile };
+  const referrer = String(member.referrer || "").trim();
+  if (!referrer) return null;
+
+  const { doc, setDoc, serverTimestamp } = firebaseApi.firestoreModule;
+  const summary = buildReferralIrisSummary(phone);
+  const payload = {
+    updatedAt: serverTimestamp(),
+    updatedAtText: new Date().toISOString(),
+    memberUid: currentUser.uid,
+    memberPhone: phone,
+    memberName: member.name || "",
+    memberEmail: member.email || "",
+    memberAddress: member.address || "",
+    memberNo: member.memberNo || "",
+    joinedAt: member.joinedAt || member.createdAt || "",
+    referrer,
+    referrerKey: normalizeReferralName(referrer),
+    irisSummary: summary
+  };
+  await setDoc(doc(db, "referralMembers", currentUser.uid), payload, { merge: true });
+  return payload;
+}
+
+async function listReferralMembers(referrerName) {
+  if (!firebaseReady || !currentUser?.uid) return [];
+  const referrerKey = normalizeReferralName(referrerName);
+  if (!referrerKey) return [];
+  const { collection, getDocs, query, where } = firebaseApi.firestoreModule;
+  const snap = await getDocs(query(collection(db, "referralMembers"), where("referrerKey", "==", referrerKey)));
+  return snap.docs.map((item) => ({ id: item.id, ...item.data() }))
+    .sort((a, b) => String(b.updatedAtText || b.joinedAt || "").localeCompare(String(a.updatedAtText || a.joinedAt || "")));
+}
+
+function buildReferralIrisSummary(phone) {
+  const result = readJson("irisReadingResult", null);
+  const photoState = readJson(`irisEyePhotoState:${phone}`, {});
+  const rightMarkers = readJson(`${EYE_MARKERS_KEY_PREFIX}:${phone}:right`, []);
+  const leftMarkers = readJson(`${EYE_MARKERS_KEY_PREFIX}:${phone}:left`, []);
+  const observations = collectIrisObservationSummary(result);
+  return {
+    hasPhoto: Boolean(photoState?.right || photoState?.left),
+    photoState: {
+      right: Boolean(photoState?.right),
+      left: Boolean(photoState?.left)
+    },
+    markerCount: (Array.isArray(rightMarkers) ? rightMarkers.length : 0) + (Array.isArray(leftMarkers) ? leftMarkers.length : 0),
+    latestReadingAt: result?.createdAt || "",
+    observationMode: result?.observationMode || "",
+    topObservations: observations.slice(0, 8)
+  };
+}
+
+function collectIrisObservationSummary(result) {
+  if (!result) return [];
+  const source = result.manualObservations || result.allObservations || { right: result.right || [], left: result.left || [] };
+  return ["right", "left"].flatMap((eyeKey) => {
+    const eyeLabel = eyeKey === "left" ? "좌안" : "우안";
+    const items = Array.isArray(source?.[eyeKey]) ? source[eyeKey] : [];
+    return items.map((item) => ({
+      eye: eyeLabel,
+      code: item.code || "",
+      area: item.area || item.organ || item.title || item.code || "미분류",
+      type: item.type || item.pattern || "",
+      score: Number(item.score || item.priorityScore || 0) || 0
+    }));
+  }).sort((a, b) => b.score - a.score);
 }
 
 async function getMemberProfile(uid = currentUser?.uid) {
@@ -974,6 +1053,10 @@ function normalizePhone(value) {
   if (digits.startsWith("82")) digits = digits.slice(2);
   if (digits.length === 10 && digits.startsWith("10")) digits = `0${digits}`;
   return digits;
+}
+
+function normalizeReferralName(value) {
+  return String(value || "").replace(/\s+/g, "").trim().toLowerCase();
 }
 
 function debugSyncInfo() {
