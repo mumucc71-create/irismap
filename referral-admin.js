@@ -3,6 +3,8 @@
 
   const SESSION_KEY = "irisMappingSession";
   const USERS_KEY = "irisMappingUsers";
+  const GOOGLE_SCRIPT_URL_KEY = "irisConsultGoogleScriptUrl";
+  const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSNHb7KjCL6lqu08bCzqFQjeN2B17xj46nQT3LMCZuvUmqiIQZsa8uQswbrJZDzK0/exec";
   const rowsTarget = document.querySelector("#memberRows");
   const metricsTarget = document.querySelector("#metrics");
   const ownerTarget = document.querySelector("#ownerStatus");
@@ -41,10 +43,30 @@
       });
     }
 
+    const sheetMembers = await listReferralMembersFromSheet(referrerName);
     const localMembers = collectLocalReferralMembers(referrerName, users);
-    const members = mergeMembers(remoteMembers, localMembers);
+    const members = mergeMembers(remoteMembers, sheetMembers, localMembers);
     renderMetrics(members);
     renderRows(members);
+  }
+
+  async function listReferralMembersFromSheet(referrerName) {
+    const scriptUrl = localStorage.getItem(GOOGLE_SCRIPT_URL_KEY) || DEFAULT_GOOGLE_SCRIPT_URL;
+    if (!scriptUrl || !referrerName) return [];
+    try {
+      const url = new URL(scriptUrl);
+      url.searchParams.set("type", "referral_members");
+      url.searchParams.set("referrer", referrerName);
+      const response = await fetch(url.toString(), { method: "GET" });
+      const result = await response.json().catch(() => ({}));
+      return Array.isArray(result.members) ? result.members.map((member) => ({
+        ...member,
+        irisSummary: member.irisSummary || { hasPhoto: false, photoState: {}, markerCount: 0, topObservations: [] }
+      })) : [];
+    } catch (error) {
+      console.warn("회원DB Google Sheet 목록을 불러오지 못했습니다.", error);
+      return [];
+    }
   }
 
   function collectLocalReferralMembers(referrerName, users) {
@@ -102,9 +124,9 @@
     }).sort((a, b) => b.score - a.score);
   }
 
-  function mergeMembers(remoteMembers, localMembers) {
+  function mergeMembers(...memberGroups) {
     const map = new Map();
-    [...localMembers, ...remoteMembers].forEach((member) => {
+    memberGroups.flat().forEach((member) => {
       const key = normalizePhone(member.memberPhone || member.phone) || member.memberUid || member.id;
       if (!key) return;
       map.set(key, { ...(map.get(key) || {}), ...member });

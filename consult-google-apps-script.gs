@@ -6,6 +6,15 @@ var ORDER_SHEET_NAME = "\uC8FC\uBB38";
 var MEMBER_SHEET_NAME = "\uBA64\uBC84";
 var INSURANCE_SHEET_NAME = "\uBCF4\uD5D8\uC0C1\uB2F4";
 
+function doGet(e) {
+  var params = e && e.parameter ? e.parameter : {};
+  var type = params.type || "";
+  if (type === "referral_members") {
+    return listReferralMembers_(params.referrer || "");
+  }
+  return json_({ ok: true, success: true });
+}
+
 function doPost(e) {
   var data = parsePostData_(e);
   var type = data.type || data.source || "consult";
@@ -153,6 +162,35 @@ function getSheet_(name, headers) {
   return sheet;
 }
 
+function listReferralMembers_(referrer) {
+  var referrerKey = normalizeReferralName_(referrer);
+  var sheet = getSheet_(MEMBER_SHEET_NAME, headersMember_());
+  var rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1 || !referrerKey) return json_({ ok: true, success: true, members: [] });
+
+  var headers = rows[0].map(function(value) { return String(value || "").trim(); });
+  var membersByPhone = {};
+  rows.slice(1).forEach(function(row) {
+    var record = rowToObject_(headers, row);
+    if (normalizeReferralName_(record["\uCD94\uCC9C\uC778"]) !== referrerKey) return;
+    var phone = normalizePhone_(record["\uC815\uADDC\uD654\uC804\uD654\uBC88\uD638"] || record["\uC804\uD654\uBC88\uD638"]);
+    if (!phone) return;
+    membersByPhone[phone] = {
+      memberPhone: phone,
+      memberName: record["\uC774\uB984"] || "",
+      memberEmail: record["\uC774\uBA54\uC77C"] || "",
+      memberAddress: record["\uC8FC\uC18C"] || "",
+      memberNo: record["\uD68C\uC6D0\uBC88\uD638"] || "",
+      joinedAt: record["\uAC00\uC785\uC77C\uC2DC/\uB85C\uADF8\uC778\uC77C\uC2DC"] || "",
+      referrer: record["\uCD94\uCC9C\uC778"] || "",
+      updatedAtText: record["\uC800\uC7A5\uC77C\uC2DC"] || "",
+      source: "googleSheet"
+    };
+  });
+
+  return json_({ ok: true, success: true, members: Object.keys(membersByPhone).map(function(phone) { return membersByPhone[phone]; }) });
+}
+
 function ensureHeaders_(sheet, headers) {
   var lastColumn = Math.max(sheet.getLastColumn(), 1);
   var current = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(function(value) {
@@ -170,6 +208,26 @@ function ensureHeaders_(sheet, headers) {
     sheet.getRange(1, insertIndex).setValue(header);
     current.splice(insertIndex - 1, 0, header);
   });
+}
+
+function rowToObject_(headers, row) {
+  var record = {};
+  headers.forEach(function(header, index) {
+    record[header] = row[index];
+  });
+  return record;
+}
+
+function normalizePhone_(value) {
+  var digits = String(value || "").replace(/\D/g, "");
+  if (digits.indexOf("0082") === 0) digits = digits.slice(4);
+  if (digits.indexOf("82") === 0) digits = digits.slice(2);
+  if (digits.length === 10 && digits.indexOf("10") === 0) digits = "0" + digits;
+  return digits;
+}
+
+function normalizeReferralName_(value) {
+  return String(value || "").replace(/\s+/g, "").trim().toLowerCase();
 }
 
 function sendAdminMail_(subject, body) {
