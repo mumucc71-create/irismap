@@ -203,7 +203,7 @@
     const preschoolDevelopmentOptions = ["해당 없음", "말·의사표현·대화 어려움", "운동 발달 걱정", "배변 훈련·대소변 조절 어려움", "분리불안", "어린이집·유치원 적응 어려움", "감각 예민·반복 행동", "씹기·삼키기·식사 행동 어려움"];
     const lowerElementaryOptions = ["해당 없음", "학교 적응 어려움", "읽기·쓰기·셈하기 어려움", "수업 집중·착석 어려움", "숙제·준비물 마무리 어려움", "친구 관계 어려움", "따돌림·괴롭힘 경험", "휴대폰·게임·영상 조절 어려움", "신체활동 적음·체육 어려움"];
     const upperElementaryOptions = ["해당 없음", "사춘기·성장 걱정", "학업·시험·성적 스트레스", "계획·집중·과제 마무리 어려움", "친구 관계·단체생활 어려움", "따돌림·온라인 갈등", "기분 저하·불안·짜증", "외모·체형·체중 걱정", "휴대폰·게임·SNS 조절 어려움", "수면 부족"];
-    const lifestyleRhythmOptions = ["해당 없음", "새벽까지 깨어 있음", "수면 시간이 불규칙함", "잠들기 전 화면 사용 많음", "쉬어도 피로가 안 풀림"];
+    const lifestyleRhythmOptions = ["해당 없음", "새벽까지 깨어 있음", "수면 시간이 불규칙함", "잠들기 전 휴대폰 사용 많음", "쉬어도 피로가 안 풀림"];
     const healthEffortOptions = ["해당 없음", "건강관리에 관심 많음", "건강 비용 지출", "식품 성분표 확인", "환경호르몬·수질 신경 씀", "건강식품 복용"];
     const stressEmotionOptions = ["해당 없음", "일·사업·책임감 스트레스", "가족 문제 스트레스", "인간관계 부담", "경제 걱정", "외로움", "미래 불안", "감정이 쉽게 격해짐", "화를 잘 냄", "감정기복", "상처를 오래 기억", "예민함", "참는 편", "스트레스 회복 오래 걸림"];
     const eyeDiscomfortOptions = ["해당 없음", "빛 번짐·눈부심", "눈 피로"];
@@ -251,9 +251,7 @@
       lifestyleRhythmOptions,
       healthEffortOptions,
       stressEmotionOptions,
-      eyeDiscomfortOptions,
       hormoneMetabolismOptions,
-      femaleChangeOptions,
       inflammationOptions,
       medicalBehaviorOptions
     ]);
@@ -312,7 +310,6 @@
       { title: "눈 건강 상세", group: "eyeHealthDetail", questions: [
         ["visionStatus", "시력 상태", visionStatusOptions],
         ["eyeDiseases", "눈 질환·반복 증상", eyeDiseaseOptions],
-        ["eyeDiscomforts", "눈 불편감", eyeDiscomfortOptions],
         ["eyeSurgeryHistory", "눈 수술 이력", eyeSurgeryOptions]
       ] },
       { title: "알레르기·피부·두피·이비인후과", group: "allergySkinEnt", questions: [
@@ -364,8 +361,7 @@
         ["immuneInfectionItems", "면역·감염 관련 해당 항목", immuneInfectionOptions]
       ] },
       { title: "여성 건강·임신·출산·폐경", group: "femaleHealth", questions: [
-        ["femaleHistories", "임신·출산 관련 이력", femaleHistoryOptions],
-        ["femaleChangeItems", "여성 건강 변화 관련 항목", femaleChangeOptions]
+        ["femaleHistories", "임신·출산 관련 이력", femaleHistoryOptions]
       ] },
       { title: "남성 건강·전립선·배뇨", group: "maleHealth", questions: [
         ["maleHealthItems", "남성 건강·전립선·배뇨 관련 항목", maleHealthOptions]

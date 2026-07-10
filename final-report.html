@@ -568,7 +568,7 @@
       const longTerm=unresolved&&/(5년|5 년|5년 이상|6년|7년|8년|9년|10년|십년)/.test(joinedText);
       let stars=1;
       if(lifeMatches.length||universeMatches.length)stars=2;
-      if(lifeMatches.length&&universeMatches.length)stars=3;
+      if(lifeMatches.length&&universeMatches.length)stars=4;
       if(stars>=3&&unresolved)stars=4;
       if(stars>=4&&longTerm)stars=5;
       const starText="★".repeat(stars)+"☆".repeat(5-stars);
