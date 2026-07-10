@@ -175,7 +175,7 @@
   </main>
   <script src="iris-organ-db.js"></script>
   <script src="care-engine.js"></script>
-  <script src="integrated-reading-engine.js?v=20260710-questionnaire-map-1"></script>
+  <script src="integrated-reading-engine.js?v=20260710-source-link-1"></script>
   <script>
     const sessionPhone = normalizePhone(localStorage.getItem("irisMappingSession"));
     const iris = readJson("irisReadingResult");
@@ -184,11 +184,20 @@
     const health = sessionPhone ? readJson(`irisHealthTest:${sessionPhone}`) : null;
     const insurance = sessionPhone ? readJson(`irisAiInsuranceConsult_${sessionPhone}`) : null;
     const irisForAccount = isCurrentIrisReading(iris, sessionPhone, currentIrisMarkers) ? iris : currentIrisReading;
-    const universeHistory = sessionPhone ? readJson(`UniverseReportDB:${sessionPhone}`) : null;
+    const universeHistory = readUniverseHistory(sessionPhone);
     const integratedResult = IrisIntegratedReadingEngine.analyze(sessionPhone);
 
     function normalizePhone(value) { let digits=String(value||"").replace(/\D/g,""); if(digits.length===10&&digits.startsWith("10")) digits=`0${digits}`; return digits; }
     function readJson(key) { try { return JSON.parse(localStorage.getItem(key)||"null"); } catch (_) { return null; } }
+    function unique(items) { return [...new Set(items.filter(Boolean))]; }
+    function readUniverseHistory(phone) {
+      const keys=unique([phone?`UniverseReportDB:${phone}`:"","UniverseReportDB"]);
+      for(const key of keys){
+        const records=readJson(key);
+        if(Array.isArray(records)&&records.length)return records;
+      }
+      return null;
+    }
     function currentIrisMarkerCount(phone) {
       if(!phone)return 0;
       return ["right","left"].reduce((sum,eye)=>{
@@ -202,9 +211,10 @@
       return ["right","left"].reduce((sum,eye)=>sum+(Array.isArray(source[eye])?source[eye].length:0),0);
     }
     function isCurrentIrisReading(data,phone,currentCount) {
-      if(!data||currentCount<=0)return false;
+      if(!data||irisReadingMarkerCount(data)<=0)return false;
       if(data.accountPhone&&normalizePhone(data.accountPhone)!==phone)return false;
-      return irisReadingMarkerCount(data)===currentCount;
+      if(currentCount>0)return irisReadingMarkerCount(data)===currentCount;
+      return true;
     }
     function buildCurrentIrisReading(phone) {
       if(!phone)return null;
@@ -281,7 +291,7 @@
       const target=document.querySelector("#healthSummary");
       const detailTarget=document.querySelector("#healthDetails");
       if (!data) { if(target)target.innerHTML='<p class="empty">저장된 라이프케어진단이 없습니다.</p><a class="missing-link" href="health.html">라이프케어진단 작성하기</a>'; if(detailTarget)detailTarget.innerHTML='<p class="empty">자료 없음</p>'; return {groups:[],findings:[]}; }
-      const names={familyHistory:"가족력·과거력",lifestyle:"생활리듬·수면",diet:"식습관·섭취",stress:"스트레스 원인",personality:"성격·감정 반응",occupation:"직업환경",riskEnvironment:"사고·환경 노출",symptoms:"현재 증상",healthAwareness:"건강 관심도",foodSafetyAwareness:"식품 안전 인식",environmentalExposureAwareness:"환경 노출 인식",cookingStorageHabits:"조리·보관 습관",supplementUse:"건강식품 섭취",dentalOralHealth:"치아·구강 건강",allergySkinEnt:"알레르기·피부·이비인후과",mentalHealth:"정신건강·정서",maleHealth:"남성 건강",femaleHealth:"여성 건강",inflammationPattern:"반복 염증",pediatricHealth:"어린이 성장·건강",preschoolDevelopment:"유아 발달",lowerElementary:"초등 저학년",upperElementary:"초등 고학년"};
+      const names={familyHistory:"가족력·과거력",lifestyle:"생활리듬·수면",diet:"식습관·섭취",stress:"스트레스 원인",personality:"성격·감정 반응",occupation:"직업환경",riskEnvironment:"사고·환경 노출",symptoms:"현재 증상",healthAwareness:"건강 관심도",foodSafetyAwareness:"식품 안전 인식",environmentalExposureAwareness:"환경 노출 인식",cookingStorageHabits:"조리·보관 습관",supplementUse:"건강식품 섭취",disabilityCongenital:"장애·선천성 질환",eyeHealthDetail:"눈 건강",allergySkinEnt:"알레르기·피부·이비인후과",foodReaction:"음식 반응",skinConstitution:"피부 체질·햇빛 반응",heartHistory:"심장 이력",hormoneMetabolism:"호르몬·갑상선·대사",smokingRespiratory:"흡연·호흡기",drinkingPattern:"숙취",exercisePattern:"운동·신체활동",postureSpine:"자세·목·허리",postpartumHealth:"임신·출산 후 변화",coldSensitivity:"냉증·찬 기운",femaleHormone:"여성 호르몬",immuneInfection:"면역·감염",femaleHealth:"여성 건강",maleHealth:"남성 건강",mentalHealth:"정신건강·정서",dentalOralHealth:"치아·구강 건강",inflammationPattern:"반복 염증",childhoodExperience:"어린 시절 경험",homeEnvironment:"주거환경",medicalBehavior:"의료 이용 성향",pediatricHealth:"어린이 성장·건강",preschoolDevelopment:"유아 발달",lowerElementary:"초등 저학년",upperElementary:"초등 고학년"};
       const meta=new Set(["phone","status","updatedAt","createdAt","answerLabels"]); const labels=data.answerLabels||{};
       const groups=Object.entries(data).filter(([key,value])=>key!=="familyHistory"&&!meta.has(key)&&value&&typeof value==="object"&&!Array.isArray(value)).map(([key,answers])=>{
         const findings=Object.entries(answers).filter(([name,value])=>isConcernFinding(name,value)).map(([name,value])=>({name,label:labels[name]||fallbackHealthLabel(name),value,group:key,groupTitle:names[key]||"기타 건강 영역"}));
@@ -453,7 +463,8 @@
 
     function renderStatus() {
       const hasHealthData=healthFindings.length>0;
-      const hasLifestyle=integratedResult.results.some((group)=>(group.selected.lifestyleMatches||[]).length);
+      const lifestyleGroups=new Set(["lifestyle","diet","stress","occupation","riskEnvironment","healthAwareness","medicalBehavior"]);
+      const hasLifestyle=Boolean(health&&Object.entries(health).some(([key,value])=>lifestyleGroups.has(key)&&value&&typeof value==="object"&&!Array.isArray(value)&&Object.values(value).some(isMeaningful)));
       const items=[["라이프진단",hasHealthData],["유니버스 병력",Array.isArray(universeHistory)&&universeHistory.length>0],["생활습관",hasLifestyle],["홍채 교차확인",!!irisForAccount]];
       document.querySelector("#sourceStatus").innerHTML=items.map(([name,ready])=>`<div class="card status"><strong>${name}</strong><b class="${ready?"ready":""}">${ready?"준비 완료":"자료 없음"}</b></div>`).join("");
     }
@@ -705,7 +716,10 @@
     function renderCombined() {
       const combinedSummary=document.querySelector("#combinedSummary");
       if(!combinedSummary)return;
-      const priorities=integratedResult.results.slice(0,3).map((group)=>group.selected.name);
+      const sourceResults=integratedResult.hasQuestionnaire
+        ? integratedResult.results.filter((group)=>(group.selected.currentQuestionnaireMatches||group.selected.questionnaireMatches||[]).length)
+        : [];
+      const priorities=sourceResults.slice(0,3).map((group)=>group.selected.name);
       const priorityHtml=priorities.length?`<div class="summary-priorities">${priorities.map((name,index)=>`<strong>${index+1}. ${escapeHtml(name)}</strong>`).join("")}</div>`:"";
       const summary=priorities.length
         ? `현재는 ${priorities.join(", ")} 순서로 관리 우선도가 확인됩니다. 문진을 중심으로 생활습관, 과거 병력, 홍채 관찰을 교차 확인한 결과입니다.`

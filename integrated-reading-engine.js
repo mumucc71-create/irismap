@@ -16,7 +16,7 @@
   };
   const REPEATED_VALUES=new Set(["자주","거의 매일","매우심함","심함","재발 있음","현재 불편감","후유증"]);
   const NEUTRAL_VALUES=new Set(["","아니오","전혀 아니다","없음","해당 없음","정상","모름","잘 모름","미기록","특별히 없음","통증 없음"]);
-  const LIFESTYLE_GROUPS=new Set(["lifestyle","diet","stress","occupation","riskEnvironment"]);
+  const LIFESTYLE_GROUPS=new Set(["lifestyle","diet","stress","occupation","riskEnvironment","healthAwareness","medicalBehavior"]);
   const CANDIDATE_FIELD_NAMES={
     eyeFace:["eyeEarMouthSymptoms","visionStatus","eyeDiseases","eyeDiscomforts","eyeSurgeryHistory","skinScalpDiseases","skinSunReactions","dentalSymptoms","pediatricHealthItems"],
     bronchial:["respiratorySymptoms","smokingRespiratoryItems","entDiseases","immuneInfectionItems","homeEnvironmentItems","pediatricHealthItems"],
@@ -83,8 +83,16 @@
       return Object.entries(answers).filter(([,value])=>includeNeutral||meaningful(value)).map(([name,value])=>({group,name,label:labels[name]||name,value}));
     });
   }
-  function latestUniverse(phone){const records=readJson(phone?`UniverseReportDB:${phone}`:"UniverseReportDB");return Array.isArray(records)?records.at(-1)||null:null}
-  function previousUniverse(phone){const records=readJson(phone?`UniverseReportDB:${phone}`:"UniverseReportDB");return Array.isArray(records)&&records.length>1?records.at(-2):null}
+  function universeRecords(phone){
+    const keys=unique([phone?`UniverseReportDB:${phone}`:"","UniverseReportDB"]);
+    for(const key of keys){
+      const records=readJson(key);
+      if(Array.isArray(records)&&records.length)return records;
+    }
+    return [];
+  }
+  function latestUniverse(phone){const records=universeRecords(phone);return records.at(-1)||null}
+  function previousUniverse(phone){const records=universeRecords(phone);return records.length>1?records.at(-2):null}
 
   function analyze(phoneValue){
     const phone=normalizePhone(phoneValue||localStorage.getItem("irisMappingSession"));
@@ -92,7 +100,7 @@
     const rawIris=readJson("irisReadingResult");
     const currentMarkerCount=currentIrisMarkerCount(phone);
     const currentIris=buildCurrentIrisReading(phone);
-    const iris=currentMarkerCount>0&&irisReadingMarkerCount(rawIris)===currentMarkerCount?rawIris:currentIris;
+    const iris=isUsableIrisReading(rawIris,phone,currentMarkerCount)?rawIris:currentIris;
     const allAnswers=flattenHealth(health,true);
     const allFindings=allAnswers.filter((item)=>meaningful(item.value));
     const familyFindings=allFindings.filter(isFamilyFinding);
@@ -157,6 +165,12 @@
     if((CANDIDATE_FIELD_NAMES[candidate.id]||[]).includes(item?.name))return true;
     const text=itemText(item);
     return candidate.keywords.some((keyword)=>text.includes(keyword));
+  }
+  function isUsableIrisReading(iris,phone,currentMarkerCount){
+    if(!iris||irisReadingMarkerCount(iris)<=0)return false;
+    if(iris.accountPhone&&normalizePhone(iris.accountPhone)!==phone)return false;
+    if(currentMarkerCount>0)return irisReadingMarkerCount(iris)===currentMarkerCount;
+    return true;
   }
   function matchHistory(candidate,universe){
     if(!universe)return[];
