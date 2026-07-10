@@ -54,9 +54,14 @@
       return sum+(Array.isArray(markers)?markers.length:0);
     },0);
   }
+  function hasCurrentIrisPhotoEvidence(phone){
+    if(!phone)return false;
+    const state=readJson(`irisEyePhotoState:${phone}`);
+    return Boolean(state&&(state.right||state.left));
+  }
   function irisReadingMarkerCount(iris){return irisObservations(iris).length}
   function buildCurrentIrisReading(phone){
-    if(!phone)return null;
+    if(!phone||!hasCurrentIrisPhotoEvidence(phone))return null;
     const right=readJson(`irisEyeMarkers:${phone}:right`)||[];
     const left=readJson(`irisEyeMarkers:${phone}:left`)||[];
     if(!right.length&&!left.length)return null;
@@ -99,8 +104,9 @@
     const health=phone?readJson(`irisHealthTest:${phone}`):null;
     const rawIris=readJson("irisReadingResult");
     const currentMarkerCount=currentIrisMarkerCount(phone);
+    const hasIrisPhotoEvidence=hasCurrentIrisPhotoEvidence(phone);
     const currentIris=buildCurrentIrisReading(phone);
-    const iris=isUsableIrisReading(rawIris,phone,currentMarkerCount)?rawIris:currentIris;
+    const iris=hasIrisPhotoEvidence?(isUsableIrisReading(rawIris,phone,currentMarkerCount)?rawIris:currentIris):null;
     const allAnswers=flattenHealth(health,true);
     const allFindings=allAnswers.filter((item)=>meaningful(item.value));
     const familyFindings=allFindings.filter(isFamilyFinding);
@@ -168,6 +174,7 @@
   }
   function isUsableIrisReading(iris,phone,currentMarkerCount){
     if(!iris||irisReadingMarkerCount(iris)<=0)return false;
+    if(iris.hasPhotoEvidence===false)return false;
     if(iris.accountPhone&&normalizePhone(iris.accountPhone)!==phone)return false;
     if(currentMarkerCount>0)return irisReadingMarkerCount(iris)===currentMarkerCount;
     return true;

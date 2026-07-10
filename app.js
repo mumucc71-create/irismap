@@ -139,6 +139,7 @@ const AUTH_USERS_KEY = "irisMappingUsers";
 const AUTH_SESSION_KEY = "irisMappingSession";
 const MAPPING_OVERLAY_KEY_PREFIX = "irisMappingOverlayVisible";
 const IRIS_EYE_MARKERS_KEY_PREFIX = "irisEyeMarkers";
+const IRIS_EYE_PHOTO_STATE_KEY_PREFIX = "irisEyePhotoState";
 const EYE_PHOTO_DB_NAME = "irisMappingPhotoStore";
 const EYE_PHOTO_STORE_NAME = "eyePhotos";
 const EYE_PHOTO_DB_VERSION = 1;
@@ -1056,6 +1057,7 @@ async function setEyeImage(eyeKey, file) {
   eye.positionLocked = false;
   eye.markers = [];
   eye.selected = null;
+  updateIrisEyePhotoState(currentPhotoOwnerKey(), eyeKey, true);
   resetAndDetectEye(eye, eyeKey);
   eye.alignmentMode = true;
   syncManualReadingResult();
@@ -1106,6 +1108,36 @@ function mappingOverlayStorageKey() {
 
 function eyeMarkerStorageKey(ownerKey, eyeKey) {
   return `${IRIS_EYE_MARKERS_KEY_PREFIX}:${ownerKey}:${eyeKey}`;
+}
+
+function eyePhotoStateStorageKey(ownerKey) {
+  return `${IRIS_EYE_PHOTO_STATE_KEY_PREFIX}:${ownerKey}`;
+}
+
+function readIrisEyePhotoState(ownerKey) {
+  if (!ownerKey) return { right: false, left: false };
+  try {
+    const saved = JSON.parse(localStorage.getItem(eyePhotoStateStorageKey(ownerKey)) || "{}");
+    return { right: Boolean(saved.right), left: Boolean(saved.left), updatedAt: saved.updatedAt || "" };
+  } catch (_) {
+    return { right: false, left: false };
+  }
+}
+
+function updateIrisEyePhotoState(ownerKey, eyeKey, hasPhoto) {
+  if (!ownerKey || !["right", "left"].includes(eyeKey)) return;
+  const next = { ...readIrisEyePhotoState(ownerKey), [eyeKey]: Boolean(hasPhoto), updatedAt: new Date().toISOString() };
+  localStorage.setItem(eyePhotoStateStorageKey(ownerKey), JSON.stringify(next));
+}
+
+function currentIrisPhotoEvidence(ownerKey = currentPhotoOwnerKey()) {
+  const saved = readIrisEyePhotoState(ownerKey);
+  const live = {
+    right: Boolean(state.eyes.right.image && state.eyes.right.sourceBlob),
+    left: Boolean(state.eyes.left.image && state.eyes.left.sourceBlob)
+  };
+  const photoState = { right: saved.right || live.right, left: saved.left || live.left, updatedAt: saved.updatedAt || "" };
+  return { photoState, hasPhotoEvidence: Boolean(photoState.right || photoState.left) };
 }
 
 function persistMappingOverlayState() {
@@ -1223,6 +1255,7 @@ async function persistEyeState(eyeKey) {
   try {
     if (!eye.image || !eye.sourceBlob) {
       await runEyePhotoStore("readwrite", (store) => store.delete(id));
+      updateIrisEyePhotoState(ownerKey, eyeKey, false);
       persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
       await persistEyeStateToFirebase(eyeKey, eye, { includeImage: false });
       return;
@@ -1238,6 +1271,7 @@ async function persistEyeState(eyeKey) {
       geometry: serializeEyeGeometry(eye),
       updatedAt: new Date().toISOString()
     }));
+    updateIrisEyePhotoState(ownerKey, eyeKey, true);
     persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
     await persistEyeStateToFirebase(eyeKey, eye, { includeImage: !eye.firebaseImageSynced });
   } catch (error) {
@@ -1462,6 +1496,7 @@ async function loadIrisSnapshot(snapshotId) {
 }
 
 async function applyIrisSnapshot(snapshot) {
+  const ownerKey = currentPhotoOwnerKey();
   for (const eyeKey of ["right", "left"]) {
     const entry = snapshot[eyeKey];
     const eye = createEyeState();
@@ -1476,6 +1511,7 @@ async function applyIrisSnapshot(snapshot) {
       }
       eye.markers = restoreEyeMarkers(eye, entry.markers || entry.geometry?.markers || []);
     }
+    updateIrisEyePhotoState(ownerKey, eyeKey, Boolean(eye.image && eye.sourceBlob));
     state.eyes[eyeKey] = eye;
   }
   state.activeEye = state.eyes.right.image ? "right" : state.eyes.left.image ? "left" : "right";
@@ -1655,7 +1691,10 @@ async function restoreSavedEyeImagesForCurrentUser(options = {}) {
     if (firebaseRecord?.blob) {
       record = firebaseRecord;
     }
-    if (!record?.blob) continue;
+    if (!record?.blob) {
+      updateIrisEyePhotoState(ownerKey, eyeKey, false);
+      continue;
+    }
 
     try {
       const eye = createEyeState();
@@ -1689,6 +1728,7 @@ async function restoreSavedEyeImagesForCurrentUser(options = {}) {
         localStorageMarkerKey: eyeMarkerStorageKey(ownerKey, eyeKey)
       });
       state.eyes[eyeKey] = eye;
+      updateIrisEyePhotoState(ownerKey, eyeKey, true);
     } catch (error) {
       console.warn(`${eyeKey} 홍채 사진 복원에 실패했습니다.`, error);
     }
@@ -3413,6 +3453,8 @@ function syncManualReadingResult() {
 }
 
 function buildCurrentManualReadingPayload() {
+  const accountPhone = currentPhotoOwnerKey() || "guest";
+  const { photoState, hasPhotoEvidence } = currentIrisPhotoEvidence(accountPhone);
   const manualRightObservations = buildManualObservationReading("right");
   const manualLeftObservations = buildManualObservationReading("left");
   const hasManualObservations = manualRightObservations.length || manualLeftObservations.length;
@@ -3424,7 +3466,9 @@ function buildCurrentManualReadingPayload() {
   };
   return {
     createdAt: new Date().toISOString(),
-    accountPhone: currentPhotoOwnerKey() || "guest",
+    accountPhone,
+    hasPhotoEvidence,
+    photoState,
     right: rightResults,
     left: leftResults,
     allObservations: {

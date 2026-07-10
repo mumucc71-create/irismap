@@ -175,15 +175,16 @@
   </main>
   <script src="iris-organ-db.js"></script>
   <script src="care-engine.js"></script>
-  <script src="integrated-reading-engine.js?v=20260710-source-link-1"></script>
+  <script src="integrated-reading-engine.js?v=20260710-iris-photo-state-1"></script>
   <script>
     const sessionPhone = normalizePhone(localStorage.getItem("irisMappingSession"));
     const iris = readJson("irisReadingResult");
     const currentIrisMarkers = currentIrisMarkerCount(sessionPhone);
+    const hasIrisPhotoEvidence = hasCurrentIrisPhotoEvidence(sessionPhone);
     const currentIrisReading = buildCurrentIrisReading(sessionPhone);
     const health = sessionPhone ? readJson(`irisHealthTest:${sessionPhone}`) : null;
     const insurance = sessionPhone ? readJson(`irisAiInsuranceConsult_${sessionPhone}`) : null;
-    const irisForAccount = isCurrentIrisReading(iris, sessionPhone, currentIrisMarkers) ? iris : currentIrisReading;
+    const irisForAccount = hasIrisPhotoEvidence ? (isCurrentIrisReading(iris, sessionPhone, currentIrisMarkers) ? iris : currentIrisReading) : null;
     const universeHistory = readUniverseHistory(sessionPhone);
     const integratedResult = IrisIntegratedReadingEngine.analyze(sessionPhone);
 
@@ -210,14 +211,20 @@
       const source=data.manualObservations||data.allObservations||{right:data.right||[],left:data.left||[]};
       return ["right","left"].reduce((sum,eye)=>sum+(Array.isArray(source[eye])?source[eye].length:0),0);
     }
+    function hasCurrentIrisPhotoEvidence(phone) {
+      if(!phone)return false;
+      const state=readJson(`irisEyePhotoState:${phone}`);
+      return Boolean(state&&(state.right||state.left));
+    }
     function isCurrentIrisReading(data,phone,currentCount) {
       if(!data||irisReadingMarkerCount(data)<=0)return false;
+      if(data.hasPhotoEvidence===false)return false;
       if(data.accountPhone&&normalizePhone(data.accountPhone)!==phone)return false;
       if(currentCount>0)return irisReadingMarkerCount(data)===currentCount;
       return true;
     }
     function buildCurrentIrisReading(phone) {
-      if(!phone)return null;
+      if(!phone||!hasCurrentIrisPhotoEvidence(phone))return null;
       const right=readJson(`irisEyeMarkers:${phone}:right`)||[];
       const left=readJson(`irisEyeMarkers:${phone}:left`)||[];
       if(!right.length&&!left.length)return null;
