@@ -5,7 +5,7 @@
 
   const SESSION_KEY = "irisMappingSession";
   const FIREBASE_CONFIG_SCRIPT = "firebase-config.js?v=20260710-referrer-required-2";
-  const FIREBASE_SYNC_SCRIPT = "firebase-sync.js?v=20260713-health-universe-sync-1";
+  const FIREBASE_SYNC_SCRIPT = "firebase-sync.js?v=20260713-sync-size-limit-2";
   const ROUTES = {
     home: { label: "홈", href: "index.html" },
     health: { label: "라이프진단", href: "health.html" },

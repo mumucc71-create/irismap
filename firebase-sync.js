@@ -4,6 +4,7 @@ const SESSION_KEY = "irisMappingSession";
 const USERS_KEY = "irisMappingUsers";
 const EYE_MARKERS_KEY_PREFIX = "irisEyeMarkers";
 const MAX_VALUE_BYTES = 850000;
+const MAX_SYNC_DOCUMENT_BYTES = 700000;
 const SYNC_DEBOUNCE_MS = 900;
 const ANALYSIS_DOC_ID = "current";
 const LEGACY_ANALYSIS_DOC_ID = "latest";
@@ -560,20 +561,14 @@ async function flushLocalKeys(keys = []) {
     syncTimer = null;
     firestoreWriteUnlockedForUid = uid;
     const fullSnapshot = collectLocalStorageSnapshot();
-    const selectedSnapshot = {};
-    captured.forEach(({ key, exists, value }) => {
-      if (exists && typeof value === "string") selectedSnapshot[key] = value;
-    });
-    const { doc, setDoc, updateDoc, serverTimestamp } = firebaseApi.firestoreModule;
+    const syncSnapshot = buildSyncDocumentSnapshot(fullSnapshot, managedKeys);
+    const { doc, setDoc, serverTimestamp } = firebaseApi.firestoreModule;
     const snapshotRef = doc(db, "users", uid, "sync", "localStorage");
     await setDoc(snapshotRef, {
       updatedAt: serverTimestamp(),
-      keys: Object.keys(fullSnapshot)
-    }, { merge: true });
-    const selectedFields = Object.fromEntries(
-      Object.entries(selectedSnapshot).map(([key, value]) => [`data.${key}`, value])
-    );
-    if (Object.keys(selectedFields).length) await updateDoc(snapshotRef, selectedFields);
+      keys: Object.keys(syncSnapshot),
+      data: syncSnapshot
+    });
     if (managedKeys.some((key) => key === structuredKeys.irisResult || key.startsWith(EYE_MARKERS_KEY_PREFIX))) {
       await syncIrisStructuredDocs(uid, fullSnapshot);
     }
@@ -600,14 +595,15 @@ async function syncNowWithOptions(options = {}) {
   }
 
   const snapshot = collectLocalStorageSnapshot();
+  const syncSnapshot = buildSyncDocumentSnapshot(snapshot);
   const { doc, setDoc, serverTimestamp } = firebaseApi.firestoreModule;
 
-  logStep("firestore:snapshot:write:start", { uid, keyCount: Object.keys(snapshot).length });
+  logStep("firestore:snapshot:write:start", { uid, keyCount: Object.keys(syncSnapshot).length });
   await setDoc(doc(db, "users", uid, "sync", "localStorage"), {
     updatedAt: serverTimestamp(),
-    keys: Object.keys(snapshot),
-    data: snapshot
-  }, { merge: true });
+    keys: Object.keys(syncSnapshot),
+    data: syncSnapshot
+  });
   logStep("firestore:snapshot:write:done", { uid });
 
   await syncStructuredDocs(uid, snapshot);
@@ -991,15 +987,6 @@ async function loadRemoteSnapshot(uid) {
     );
     if (mergedCartValue) data[structuredKeys.cart] = mergedCartValue;
 
-    const remoteKeys = new Set(Object.keys(data));
-    const keysToRemove = [];
-    for (let index = 0; index < localStorage.length; index += 1) {
-      const key = localStorage.key(index);
-      if (!isManagedKey(key)) continue;
-      if (key === SESSION_KEY) continue;
-      if (!remoteKeys.has(key)) keysToRemove.push(key);
-    }
-    keysToRemove.forEach((key) => localStorage.removeItem(key));
     Object.entries(data).forEach(([key, value]) => {
       if (!isManagedKey(key)) return;
       if (key === SESSION_KEY && !value) return;
@@ -1080,6 +1067,41 @@ function collectLocalStorageSnapshot() {
     result[key] = value;
   }
   return result;
+}
+
+function buildSyncDocumentSnapshot(snapshot, priorityKeys = []) {
+  const excludedPatterns = [
+    /^previousIrisPhoto$/,
+    /^irisReadingHistory:/
+  ];
+  const currentPhone = normalizePhone(snapshot[SESSION_KEY] || localStorage.getItem(SESSION_KEY));
+  const preferred = new Set([
+    ...priorityKeys,
+    SESSION_KEY,
+    structuredKeys.irisResult,
+    "irisHealthTestResult",
+    currentPhone ? `irisHealthTest:${currentPhone}` : "",
+    currentPhone ? `UniverseReportDB:${currentPhone}` : "",
+    ...Object.keys(snapshot).filter((key) => key.startsWith(EYE_MARKERS_KEY_PREFIX))
+  ].filter(Boolean));
+  const candidates = Object.entries(snapshot)
+    .filter(([key]) => !excludedPatterns.some((pattern) => pattern.test(key)))
+    .sort(([left], [right]) => Number(preferred.has(right)) - Number(preferred.has(left)));
+  const compact = {};
+  let usedBytes = 0;
+  for (const [key, value] of candidates) {
+    const entryBytes = new Blob([key, value]).size + 64;
+    if (usedBytes + entryBytes > MAX_SYNC_DOCUMENT_BYTES) continue;
+    compact[key] = value;
+    usedBytes += entryBytes;
+  }
+  console.info("[IRIS Firebase compact snapshot]", {
+    sourceKeys: Object.keys(snapshot).length,
+    savedKeys: Object.keys(compact).length,
+    skippedKeys: candidates.length - Object.keys(compact).length,
+    estimatedBytes: usedBytes
+  });
+  return compact;
 }
 
 function mergeCartSnapshotValues(localValue, remoteValue) {
