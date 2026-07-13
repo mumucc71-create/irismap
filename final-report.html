@@ -276,7 +276,30 @@
     renderCombined();
     renderLifeStrategy();
     renderEvidenceDashboard();
+    const initialFinalReportStorageSignature=finalReportStorageSignature(sessionPhone);
+    window.addEventListener("irisFirebaseReadyForApp",()=>{
+      const latestSignature=finalReportStorageSignature(sessionPhone);
+      const guardKey=`irisFinalReportRefresh:${sessionPhone}`;
+      if(latestSignature!==initialFinalReportStorageSignature&&sessionStorage.getItem(guardKey)!==latestSignature){
+        sessionStorage.setItem(guardKey,latestSignature);
+        location.reload();
+      }else if(latestSignature===initialFinalReportStorageSignature){
+        sessionStorage.removeItem(guardKey);
+      }
+    });
     if(location.hash){const selectedDetail=document.querySelector(location.hash);if(selectedDetail?.tagName==="DETAILS")selectedDetail.open=true;}
+
+    function finalReportStorageSignature(phone){
+      const latestHealth=phone?readJson(`irisHealthTest:${phone}`):null;
+      const latestUniverse=readUniverseHistory(phone);
+      const lastUniverse=Array.isArray(latestUniverse)?latestUniverse.at(-1):null;
+      return JSON.stringify({
+        healthUpdatedAt:latestHealth?.updatedAt||latestHealth?.createdAt||"",
+        healthStatus:latestHealth?.status||"",
+        universeCount:Array.isArray(latestUniverse)?latestUniverse.length:0,
+        universeUpdatedAt:lastUniverse?.업로드일||lastUniverse?.updatedAt||lastUniverse?.createdAt||""
+      });
+    }
 
     function buildIrisSummary(data) {
       const target=document.querySelector("#irisSummary");
@@ -842,7 +865,7 @@
     }
 
   </script>
-  <script src="site-navigation.js?v=20260710-cross-browser-sync-1"></script>
+  <script src="site-navigation.js?v=20260713-health-universe-sync-1"></script>
 </body>
 </html>
 

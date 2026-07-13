@@ -106,9 +106,11 @@
       if(extracted.text.length<20)throw new Error("PDF에서 읽을 수 있는 텍스트가 충분하지 않습니다. 스캔 이미지 PDF는 문자 인식 처리가 필요합니다.");
       currentReport=buildUniverseReport(extracted.text,file.name,extracted.pages);
       activateVipMembership(file.name);
-      persistCurrentReport();
+      const cloudSynced=await persistCurrentReport();
       renderReport(currentReport);
-      setStatus("VIP 활성화 완료 · 건강박스 1회 무료 혜택과 유니버스 리포트가 자동 저장되었습니다.");
+      setStatus(cloudSynced
+        ? "VIP 활성화 완료 · 유니버스 리포트가 클라우드에 자동 저장되었습니다."
+        : "이 기기에는 저장됐지만 클라우드 저장을 완료하지 못했습니다.");
     }catch(error){console.error(error);setStatus(error.message||"PDF 분석 중 오류가 발생했습니다.")}
   }
 
@@ -394,6 +396,14 @@
       localStorage.setItem(key,JSON.stringify(next));
     });
   }
+  async function syncUniverseStorage(){
+    const startedAt=Date.now();
+    while(!window.IrisFirebase?.flushLocalKeys&&Date.now()-startedAt<10000){
+      await new Promise((resolve)=>setTimeout(resolve,100));
+    }
+    if(!window.IrisFirebase?.flushLocalKeys)throw new Error("클라우드 동기화 모듈을 불러오지 못했습니다.");
+    await window.IrisFirebase.flushLocalKeys([...reportStorageKeys(),vipKey]);
+  }
   function activateVipMembership(sourceFile){
     if(!sessionPhone)return;
     const now=new Date().toISOString();
@@ -427,7 +437,7 @@
       location.href="ai-health.html#healthbox";
     }
   }
-  function persistCurrentReport(){
+  async function persistCurrentReport(){
     if(!currentReport)return false;
     const history=getHistory();
     const existingIndex=history.findIndex((item)=>item.업로드일===currentReport.업로드일);
@@ -435,9 +445,22 @@
     else history.push(currentReport);
     saveHistoryEverywhere(history);
     renderStoredHistory();
-    return true;
+    try{
+      await syncUniverseStorage();
+      return true;
+    }catch(error){
+      console.warn("유니버스 클라우드 동기화 실패",error);
+      return false;
+    }
   }
-  function saveCurrentReport(){if(!persistCurrentReport())return;setStatus(`${currentReport.구독회차}회차 유니버스 리포트가 회원 기록에 저장되었습니다.`)}
+  async function saveCurrentReport(){
+    if(!currentReport)return;
+    setStatus("유니버스 리포트를 클라우드에 저장하는 중입니다...");
+    const cloudSynced=await persistCurrentReport();
+    setStatus(cloudSynced
+      ? `${currentReport.구독회차}회차 유니버스 리포트를 클라우드에 저장했습니다.`
+      : "이 기기에는 저장됐지만 클라우드 저장을 완료하지 못했습니다.");
+  }
   function renderStoredHistory(){
     const rows=$("#historyRows");if(!rows)return;
     const history=getHistory().slice().reverse();
@@ -470,7 +493,7 @@
       row.appendChild(cell);
     });
   }
-  function handleReportDelete(event){
+  async function handleReportDelete(event){
     const button=event.target.closest("[data-universe-delete-index]");
     if(!button)return;
     const history=getHistory();
@@ -479,6 +502,7 @@
     if(!Number.isInteger(deleteIndex)||deleteIndex<0||deleteIndex>=history.length)return;
     history.splice(deleteIndex,1);
     saveHistoryEverywhere(history);
+    await syncUniverseStorage().catch((error)=>console.warn("유니버스 삭제 동기화 실패",error));
     const updatedHistory=getHistory();
     currentReport=updatedHistory.at(-1)||null;
     renderStoredHistory();

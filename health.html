@@ -799,6 +799,7 @@
         saveStatus.textContent = announce
           ? `${normalizedPhone} 번호의 ${saved.status === "complete" ? "최종 문진" : "작성 중 문진"}을 불러왔습니다.`
           : "로그인 계정의 기존 작성 내용을 자동으로 복원했습니다.";
+        healthHasLocalEdits = false;
         return true;
       } catch (error) {
         if (announce) saveStatus.textContent = "저장된 문진을 불러오지 못했습니다.";
@@ -806,7 +807,34 @@
       }
     }
 
+    async function syncHealthStorageKeys(keys) {
+      const startedAt = Date.now();
+      while (!window.IrisFirebase?.flushLocalKeys && Date.now() - startedAt < 10000) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      if (!window.IrisFirebase?.flushLocalKeys) {
+        throw new Error("클라우드 동기화 모듈을 불러오지 못했습니다.");
+      }
+      await window.IrisFirebase.flushLocalKeys(keys);
+    }
+
     let healthAutoSaveTimer = null;
+    let healthCloudSaveTimer = null;
+    let healthHasLocalEdits = false;
+
+    function scheduleHealthCloudSave(phone) {
+      clearTimeout(healthCloudSaveTimer);
+      healthCloudSaveTimer = setTimeout(async () => {
+        try {
+          await syncHealthStorageKeys([phoneStorageKey(phone)]);
+          healthHasLocalEdits = false;
+          saveStatus.textContent = "작성 내용이 클라우드에 자동 저장되었습니다.";
+        } catch (error) {
+          console.warn("라이프문진 자동 동기화 실패", error);
+          saveStatus.textContent = "이 기기에는 저장됐지만 클라우드 자동 저장을 완료하지 못했습니다.";
+        }
+      }, 1200);
+    }
 
     function autoSaveHealthDraft() {
       clearTimeout(healthAutoSaveTimer);
@@ -814,19 +842,29 @@
       if (!payload) return false;
       localStorage.setItem(phoneStorageKey(payload.phone), JSON.stringify(payload));
       saveStatus.textContent = "작성 내용이 자동 저장되었습니다.";
+      scheduleHealthCloudSave(payload.phone);
       return true;
     }
 
     function scheduleHealthAutoSave() {
+      healthHasLocalEdits = true;
       clearTimeout(healthAutoSaveTimer);
       healthAutoSaveTimer = setTimeout(autoSaveHealthDraft, 350);
     }
 
-    draftSaveButton.addEventListener("click", () => {
+    draftSaveButton.addEventListener("click", async () => {
       const payload = makeSavedPayload("draft");
       if (!payload) return;
       localStorage.setItem(phoneStorageKey(payload.phone), JSON.stringify(payload));
-      saveStatus.textContent = `${payload.phone} 번호로 중간 저장했습니다.`;
+      saveStatus.textContent = "중간 저장 및 클라우드 동기화 중입니다...";
+      try {
+        await syncHealthStorageKeys([phoneStorageKey(payload.phone)]);
+        healthHasLocalEdits = false;
+        saveStatus.textContent = `${payload.phone} 번호로 중간 저장하고 클라우드에 동기화했습니다.`;
+      } catch (error) {
+        console.warn("라이프문진 중간 동기화 실패", error);
+        saveStatus.textContent = "이 기기에는 중간 저장됐지만 클라우드 동기화에 실패했습니다.";
+      }
     });
 
     loadButton.addEventListener("click", () => {
@@ -843,7 +881,7 @@
       if (document.visibilityState === "hidden") autoSaveHealthDraft();
     });
 
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const invalidGroup = checkboxGroups.find((group) => {
         const enabledInputs = group.inputs.filter((input) => !input.disabled);
@@ -869,7 +907,15 @@
       payload.createdAt = payload.updatedAt;
       localStorage.setItem(phoneStorageKey(payload.phone), JSON.stringify(payload));
       localStorage.setItem("irisHealthTestResult", JSON.stringify(payload));
-      saveStatus.textContent = `${payload.phone} 번호로 최종 저장했습니다.`;
+      saveStatus.textContent = "최종 저장 및 클라우드 동기화 중입니다...";
+      try {
+        await syncHealthStorageKeys([phoneStorageKey(payload.phone), "irisHealthTestResult"]);
+        healthHasLocalEdits = false;
+        saveStatus.textContent = `${payload.phone} 번호로 최종 저장하고 클라우드에 동기화했습니다.`;
+      } catch (error) {
+        console.warn("라이프문진 최종 동기화 실패", error);
+        saveStatus.textContent = "이 기기에는 최종 저장됐지만 클라우드 동기화에 실패했습니다.";
+      }
     });
 
     const loggedInPhone = normalizePhone(localStorage.getItem("irisMappingSession"));
@@ -879,8 +925,11 @@
         saveStatus.textContent = "작성하는 동안 입력 내용이 자동 저장됩니다.";
       }
     }
+    window.addEventListener("irisFirebaseReadyForApp", () => {
+      if (!healthHasLocalEdits && /^01\d{8,9}$/.test(loggedInPhone)) restoreSavedHealthTest(loggedInPhone, false);
+    });
   </script>
-  <script src="site-navigation.js?v=20260710-cross-browser-sync-1"></script>
+  <script src="site-navigation.js?v=20260713-health-universe-sync-1"></script>
 </body>
 </html>
 

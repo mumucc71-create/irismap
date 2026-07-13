@@ -40,6 +40,7 @@ let remoteSnapshotPromise = null;
 let remoteSnapshotMeta = null;
 let firestoreWriteUnlockedForUid = "";
 let lastFirebaseError = null;
+let explicitLocalFlushes = 0;
 const debugEntries = [];
 
 window.IrisFirebase = {
@@ -47,6 +48,7 @@ window.IrisFirebase = {
   enabled: false,
   signInWithPhoneName,
   syncNow,
+  flushLocalKeys,
   testWrite,
   signOut,
   getMemberProfile,
@@ -524,6 +526,46 @@ async function syncNow() {
   return syncNowWithOptions({});
 }
 
+async function flushLocalKeys(keys = []) {
+  const managedKeys = [...new Set((Array.isArray(keys) ? keys : [])
+    .filter((key) => typeof key === "string" && isManagedKey(key)))];
+  const captured = managedKeys.map((key) => ({
+    key,
+    exists: localStorage.getItem(key) !== null,
+    value: localStorage.getItem(key)
+  }));
+  const startedAt = Date.now();
+  while ((!firebaseReady || !currentUser?.uid) && Date.now() - startedAt < 10000) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  if (!firebaseReady || !currentUser?.uid) {
+    throw new Error("Firebase 로그인 동기화가 준비되지 않았습니다.");
+  }
+
+  const uid = currentUser.uid;
+  explicitLocalFlushes += 1;
+  try {
+    await ensureRemoteSnapshotLoaded(uid);
+    applyingRemoteSnapshot = true;
+    try {
+      captured.forEach(({ key, exists, value }) => {
+        if (exists) localStorage.setItem(key, value);
+        else localStorage.removeItem(key);
+      });
+    } finally {
+      applyingRemoteSnapshot = false;
+    }
+
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    firestoreWriteUnlockedForUid = uid;
+    await syncNowWithOptions({ allowBeforeUnlock: true, reason: "explicit-local-keys" });
+    return true;
+  } finally {
+    explicitLocalFlushes = Math.max(0, explicitLocalFlushes - 1);
+  }
+}
+
 async function syncNowWithOptions(options = {}) {
   if (!firebaseReady || !currentUser) return;
   await ensureRemoteSnapshotLoaded(currentUser.uid);
@@ -953,7 +995,7 @@ async function loadRemoteSnapshot(uid) {
 
   if (!sessionStorage.getItem("irisFirebaseSnapshotLoaded")) {
     sessionStorage.setItem("irisFirebaseSnapshotLoaded", "1");
-    if (!location.hash.includes("no-reload")) location.reload();
+    if (!explicitLocalFlushes && !location.hash.includes("no-reload")) location.reload();
   }
 }
 
