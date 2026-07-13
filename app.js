@@ -1289,7 +1289,7 @@ async function persistEyeState(eyeKey, options = {}) {
     await runEyePhotoStore("readwrite", (store) => store.put(storedRecord));
     updateIrisEyePhotoState(ownerKey, eyeKey, true);
     persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
-    const includeImage = !eye.firebaseImageSynced;
+    const includeImage = options.includeImage === true && !eye.firebaseImageSynced;
     await persistEyeStateToFirebase(eyeKey, eye, {
       includeImage,
       throwOnError: options.throwOnError
@@ -1489,6 +1489,27 @@ async function buildIrisSnapshotPayload() {
   };
 }
 
+async function markSnapshotImagesAsCloudSynced() {
+  const ownerKey = currentPhotoOwnerKey();
+  if (!ownerKey) return;
+  await Promise.all(["right", "left"].map(async (eyeKey) => {
+    const eye = state.eyes[eyeKey];
+    if (!eye.image || !eye.sourceBlob) return;
+    eye.firebaseImageSynced = true;
+    await runEyePhotoStore("readwrite", (store) => store.put({
+      id: eyePhotoRecordId(ownerKey, eyeKey),
+      ownerKey,
+      eyeKey,
+      fileName: eye.fileName,
+      blob: eye.sourceBlob,
+      normalizedBlob: eye.normalizedBlob || null,
+      geometry: serializeEyeGeometry(eye),
+      firebaseImageSynced: true,
+      updatedAt: new Date().toISOString()
+    }));
+  }));
+}
+
 async function buildIrisSnapshotEye(eyeKey) {
   const eye = state.eyes[eyeKey];
   return {
@@ -1525,11 +1546,12 @@ async function saveCurrentIrisSnapshot(options = {}) {
   try {
     setIrisSaveStatus("1/4 홍채 결과를 준비하는 중입니다...");
     syncManualReadingResult();
-    setIrisSaveStatus("2/4 홍채사진과 점을 저장하는 중입니다...");
-    await withTimeout(persistAllEyeStates({ throwOnError: true }), 50000, "홍채사진 저장");
+    setIrisSaveStatus("2/4 홍채 점과 위치를 저장하는 중입니다...");
+    await withTimeout(persistAllEyeStates({ throwOnError: true, includeImage: false }), 20000, "홍채 점 저장");
     setIrisSaveStatus("3/4 압축 저장본을 만드는 중입니다...");
     const payload = await buildIrisSnapshotPayload();
     await withTimeout(window.IrisFirebase.saveIrisSnapshot(payload), 25000, "홍채 저장본 생성");
+    await markSnapshotImagesAsCloudSynced();
     localStorage.setItem("irisSnapshotCache:lastSavedAt", payload.savedAt);
     setIrisSaveStatus("4/4 총결과와 동기화하는 중입니다...");
     await flushIrisCloudSync();
@@ -1542,8 +1564,8 @@ async function saveCurrentIrisSnapshot(options = {}) {
   } catch (error) {
     console.warn("홍채사진 저장 실패", error);
     setIrisSaveStatus(error?.name === "TimeoutError"
-      ? "저장 시간이 초과되었습니다. 인터넷 연결을 확인한 뒤 다시 저장해 주세요."
-      : "저장에 실패했습니다. 인터넷 연결을 확인해 주세요.", true);
+      ? `${error.message} 인터넷 연결을 확인한 뒤 다시 저장해 주세요.`
+      : `저장에 실패했습니다. ${error?.message || "인터넷 연결을 확인해 주세요."}`, true);
   } finally {
     irisSaveInProgress = false;
     updateUiEnabled();
@@ -1619,7 +1641,7 @@ async function applyIrisSnapshot(snapshot) {
       eye.image = await loadImageFromSrc(entry.displayImage);
       eye.sourceBlob = await dataUrlToBlob(entry.displayImage);
       eye.normalizedBlob = null;
-      eye.firebaseImageSynced = false;
+      eye.firebaseImageSynced = true;
       if (!restoreEyeGeometry(eye, entry.geometry)) {
         resetAndDetectEye(eye, eyeKey);
         normalizeEyeView(eye, NORMALIZED_IRIS_RADIUS);
