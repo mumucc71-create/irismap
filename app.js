@@ -1074,6 +1074,7 @@ async function setEyeImage(eyeKey, file) {
 }
 
 let eyePersistenceTimer = null;
+let irisSaveInProgress = false;
 
 function openEyePhotoDatabase() {
   return new Promise((resolve, reject) => {
@@ -1274,7 +1275,7 @@ async function persistEyeState(eyeKey, options = {}) {
       return;
     }
 
-    await runEyePhotoStore("readwrite", (store) => store.put({
+    const storedRecord = {
       id,
       ownerKey,
       eyeKey,
@@ -1282,14 +1283,24 @@ async function persistEyeState(eyeKey, options = {}) {
       blob: eye.sourceBlob,
       normalizedBlob: eye.normalizedBlob || null,
       geometry: serializeEyeGeometry(eye),
+      firebaseImageSynced: Boolean(eye.firebaseImageSynced),
       updatedAt: new Date().toISOString()
-    }));
+    };
+    await runEyePhotoStore("readwrite", (store) => store.put(storedRecord));
     updateIrisEyePhotoState(ownerKey, eyeKey, true);
     persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
+    const includeImage = !eye.firebaseImageSynced;
     await persistEyeStateToFirebase(eyeKey, eye, {
-      includeImage: !eye.firebaseImageSynced,
+      includeImage,
       throwOnError: options.throwOnError
     });
+    if (includeImage && eye.firebaseImageSynced) {
+      await runEyePhotoStore("readwrite", (store) => store.put({
+        ...storedRecord,
+        firebaseImageSynced: true,
+        updatedAt: new Date().toISOString()
+      }));
+    }
   } catch (error) {
     console.warn("홍채 사진을 저장하지 못했습니다.", error);
     if (options.throwOnError) throw error;
@@ -1301,14 +1312,15 @@ async function persistEyeStateToFirebase(eyeKey, eye, options = {}) {
   if (!api?.saveIrisEyeState || !api?.getCurrentUser?.()?.uid) return;
   const markers = serializeEyeMarkers(eye);
   try {
-    await api.saveIrisEyeState({
+    const uploadBlob = options.includeImage ? await createFirebaseEyeUploadBlob(eye) : null;
+    await withTimeout(api.saveIrisEyeState({
       eyeKey,
       fileName: eye.fileName,
-      blob: options.includeImage ? eye.sourceBlob : null,
-      normalizedBlob: options.includeImage ? eye.normalizedBlob : null,
+      blob: uploadBlob,
+      normalizedBlob: null,
       geometry: serializeEyeGeometry(eye),
       markers
-    });
+    }), options.includeImage ? 45000 : 20000, `${eyeKey === "left" ? "좌안" : "우안"} Firebase 저장`);
     if (options.includeImage) eye.firebaseImageSynced = true;
   } catch (error) {
     console.warn("Firebase 홍채 사진/점 동기화에 실패했습니다.", error);
@@ -1325,18 +1337,42 @@ function persistAllEyeStates(options = {}) {
 
 async function flushIrisCloudSync() {
   const api = window.IrisFirebase;
-  if (!api?.getCurrentUser?.()?.uid || !api?.syncNow) {
+  if (!api?.getCurrentUser?.()?.uid) {
     throw new Error("Firebase 로그인 동기화가 준비되지 않았습니다.");
   }
-  // Finish any startup restore first, then make the visible iris state authoritative.
-  await api.syncNow();
   const ownerKey = currentPhotoOwnerKey();
   if (ownerKey) {
     persistEyeMarkersToLocalStorage(ownerKey, "right", state.eyes.right);
     persistEyeMarkersToLocalStorage(ownerKey, "left", state.eyes.left);
   }
   syncManualReadingResult();
-  await api.syncNow();
+  const irisKeys = ownerKey ? [
+    eyeMarkerStorageKey(ownerKey, "right"),
+    eyeMarkerStorageKey(ownerKey, "left"),
+    eyePhotoStateStorageKey(ownerKey),
+    `irisReadingHistory:${ownerKey}`,
+    "irisReadingResult",
+    "irisSnapshotCache:lastSavedAt"
+  ] : ["irisReadingResult", "irisSnapshotCache:lastSavedAt"];
+  if (api.flushLocalKeys) {
+    await withTimeout(api.flushLocalKeys(irisKeys), 25000, "홍채 결과 동기화");
+  } else if (api.syncNow) {
+    await withTimeout(api.syncNow(), 25000, "홍채 결과 동기화");
+  } else {
+    throw new Error("Firebase 동기화 함수가 준비되지 않았습니다.");
+  }
+}
+
+function withTimeout(promise, timeoutMs, label) {
+  let timer = null;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error(`${label} 시간이 초과되었습니다.`);
+      error.name = "TimeoutError";
+      reject(error);
+    }, timeoutMs);
+  });
+  return Promise.race([Promise.resolve(promise), timeout]).finally(() => clearTimeout(timer));
 }
 
 function scheduleEyeStatePersistence(eyeKey) {
@@ -1389,7 +1425,7 @@ function restoreEyeGeometry(eye, geometry) {
 
 async function createCompressedEyeDataUrl(eye) {
   if (!eye?.image) return "";
-  const maxSizes = [760, 640, 520, 420];
+  const maxSizes = [640, 520, 420, 340];
   let lastDataUrl = "";
   for (const maxSize of maxSizes) {
     const sourceWidth = eye.image.naturalWidth || eye.image.width || maxSize;
@@ -1402,10 +1438,33 @@ async function createCompressedEyeDataUrl(eye) {
     outputContext.fillStyle = "#000";
     outputContext.fillRect(0, 0, output.width, output.height);
     outputContext.drawImage(eye.image, 0, 0, output.width, output.height);
-    lastDataUrl = output.toDataURL("image/jpeg", 0.72);
-    if (lastDataUrl.length < 380000) return lastDataUrl;
+    lastDataUrl = output.toDataURL("image/jpeg", 0.68);
+    if (lastDataUrl.length < 190000) return lastDataUrl;
   }
   return lastDataUrl;
+}
+
+async function createFirebaseEyeUploadBlob(eye) {
+  if (!eye?.image) return null;
+  const maxSizes = [1400, 1200, 1000, 800];
+  let lastBlob = null;
+  for (const maxSize of maxSizes) {
+    const sourceWidth = eye.image.naturalWidth || eye.image.width || maxSize;
+    const sourceHeight = eye.image.naturalHeight || eye.image.height || maxSize;
+    const scale = Math.min(1, maxSize / Math.max(sourceWidth, sourceHeight));
+    const output = document.createElement("canvas");
+    output.width = Math.max(1, Math.round(sourceWidth * scale));
+    output.height = Math.max(1, Math.round(sourceHeight * scale));
+    const outputContext = output.getContext("2d");
+    outputContext.fillStyle = "#000";
+    outputContext.fillRect(0, 0, output.width, output.height);
+    outputContext.drawImage(eye.image, 0, 0, output.width, output.height);
+    lastBlob = await new Promise((resolve, reject) => {
+      output.toBlob((blob) => blob ? resolve(blob) : reject(new Error("홍채사진 압축에 실패했습니다.")), "image/jpeg", 0.78);
+    });
+    if (lastBlob.size < 750000) return lastBlob;
+  }
+  return lastBlob;
 }
 
 async function buildIrisSnapshotPayload() {
@@ -1460,22 +1519,34 @@ async function saveCurrentIrisSnapshot(options = {}) {
     setIrisSaveStatus("저장할 홍채사진이 없습니다.", true);
     return;
   }
+  if (irisSaveInProgress) return;
+  irisSaveInProgress = true;
+  if (saveIrisSessionButton) saveIrisSessionButton.disabled = true;
   try {
-    setIrisSaveStatus("저장 중입니다...");
+    setIrisSaveStatus("1/4 홍채 결과를 준비하는 중입니다...");
     syncManualReadingResult();
-    await persistAllEyeStates({ throwOnError: true });
+    setIrisSaveStatus("2/4 홍채사진과 점을 저장하는 중입니다...");
+    await withTimeout(persistAllEyeStates({ throwOnError: true }), 50000, "홍채사진 저장");
+    setIrisSaveStatus("3/4 압축 저장본을 만드는 중입니다...");
     const payload = await buildIrisSnapshotPayload();
-    await window.IrisFirebase.saveIrisSnapshot(payload);
+    await withTimeout(window.IrisFirebase.saveIrisSnapshot(payload), 25000, "홍채 저장본 생성");
     localStorage.setItem("irisSnapshotCache:lastSavedAt", payload.savedAt);
+    setIrisSaveStatus("4/4 총결과와 동기화하는 중입니다...");
     await flushIrisCloudSync();
     setIrisSaveStatus("저장되었습니다.");
-    await refreshIrisSnapshotList();
     if (options.openFinalReport) {
       window.location.href = "final-report.html";
+    } else {
+      refreshIrisSnapshotList().catch((error) => console.warn("저장 목록 새로고침 실패", error));
     }
   } catch (error) {
     console.warn("홍채사진 저장 실패", error);
-    setIrisSaveStatus("저장에 실패했습니다.", true);
+    setIrisSaveStatus(error?.name === "TimeoutError"
+      ? "저장 시간이 초과되었습니다. 인터넷 연결을 확인한 뒤 다시 저장해 주세요."
+      : "저장에 실패했습니다. 인터넷 연결을 확인해 주세요.", true);
+  } finally {
+    irisSaveInProgress = false;
+    updateUiEnabled();
   }
 }
 
@@ -1749,7 +1820,7 @@ async function restoreSavedEyeImagesForCurrentUser(options = {}) {
       eye.sourceBlob = record.blob;
       eye.normalizedBlob = record.normalizedBlob || null;
       eye.image = await loadImageFromBlob(record.blob);
-      eye.firebaseImageSynced = Boolean(record.fromFirebase);
+      eye.firebaseImageSynced = Boolean(record.fromFirebase || record.firebaseImageSynced);
       if (record.fromFirebase) {
         await runEyePhotoStore("readwrite", (store) => store.put(record)).catch(() => {});
       }

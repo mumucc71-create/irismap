@@ -559,7 +559,24 @@ async function flushLocalKeys(keys = []) {
     clearTimeout(syncTimer);
     syncTimer = null;
     firestoreWriteUnlockedForUid = uid;
-    await syncNowWithOptions({ allowBeforeUnlock: true, reason: "explicit-local-keys" });
+    const fullSnapshot = collectLocalStorageSnapshot();
+    const selectedSnapshot = {};
+    captured.forEach(({ key, exists, value }) => {
+      if (exists && typeof value === "string") selectedSnapshot[key] = value;
+    });
+    const { doc, setDoc, updateDoc, serverTimestamp } = firebaseApi.firestoreModule;
+    const snapshotRef = doc(db, "users", uid, "sync", "localStorage");
+    await setDoc(snapshotRef, {
+      updatedAt: serverTimestamp(),
+      keys: Object.keys(fullSnapshot)
+    }, { merge: true });
+    const selectedFields = Object.fromEntries(
+      Object.entries(selectedSnapshot).map(([key, value]) => [`data.${key}`, value])
+    );
+    if (Object.keys(selectedFields).length) await updateDoc(snapshotRef, selectedFields);
+    if (managedKeys.some((key) => key === structuredKeys.irisResult || key.startsWith(EYE_MARKERS_KEY_PREFIX))) {
+      await syncIrisStructuredDocs(uid, fullSnapshot);
+    }
     return true;
   } finally {
     explicitLocalFlushes = Math.max(0, explicitLocalFlushes - 1);
@@ -605,25 +622,7 @@ async function syncStructuredDocs(uid, snapshot) {
   if (profile?.referrer) await saveReferralMemberSummary(profile);
 
   logStep("firestore:structured:write:start", { uid });
-  const eyeMarkers = collectEyeMarkersFromSnapshot(snapshot, phone);
-  await setDoc(doc(db, "users", uid, "irisResults", "latest"), {
-    updatedAt: serverTimestamp(),
-    result: parseJsonValue(snapshot[structuredKeys.irisResult])
-  }, { merge: true });
-
-  await setDoc(doc(db, "users", uid, "irisMarkers", "latest"), {
-    updatedAt: serverTimestamp(),
-    storageKeys: eyeMarkers.storageKeys,
-    leftEyeMarkers: eyeMarkers.left,
-    rightEyeMarkers: eyeMarkers.right
-  }, { merge: true });
-  console.info("[IRIS Firebase markers]", {
-    firestorePath: `users/${uid}/irisMarkers/latest`,
-    leftEyeMarkersKey: eyeMarkers.storageKeys.left,
-    rightEyeMarkersKey: eyeMarkers.storageKeys.right,
-    leftCount: eyeMarkers.left.length,
-    rightCount: eyeMarkers.right.length
-  });
+  await syncIrisStructuredDocs(uid, snapshot);
 
   await setDoc(doc(db, "users", uid, "cart", "current"), {
     updatedAt: serverTimestamp(),
@@ -645,6 +644,31 @@ async function syncStructuredDocs(uid, snapshot) {
     items: parseJsonValue(snapshot[structuredKeys.products]) || []
   }, { merge: true });
   logStep("firestore:structured:write:done", { uid });
+}
+
+async function syncIrisStructuredDocs(uid, snapshot) {
+  const { doc, setDoc, serverTimestamp } = firebaseApi.firestoreModule;
+  const phone = normalizePhone(snapshot[SESSION_KEY] || localStorage.getItem(SESSION_KEY));
+  const eyeMarkers = collectEyeMarkersFromSnapshot(snapshot, phone);
+  await Promise.all([
+    setDoc(doc(db, "users", uid, "irisResults", "latest"), {
+      updatedAt: serverTimestamp(),
+      result: parseJsonValue(snapshot[structuredKeys.irisResult])
+    }, { merge: true }),
+    setDoc(doc(db, "users", uid, "irisMarkers", "latest"), {
+      updatedAt: serverTimestamp(),
+      storageKeys: eyeMarkers.storageKeys,
+      leftEyeMarkers: eyeMarkers.left,
+      rightEyeMarkers: eyeMarkers.right
+    }, { merge: true })
+  ]);
+  console.info("[IRIS Firebase markers]", {
+    firestorePath: `users/${uid}/irisMarkers/latest`,
+    leftEyeMarkersKey: eyeMarkers.storageKeys.left,
+    rightEyeMarkersKey: eyeMarkers.storageKeys.right,
+    leftCount: eyeMarkers.left.length,
+    rightCount: eyeMarkers.right.length
+  });
 }
 
 function collectEyeMarkersFromSnapshot(snapshot, phone) {
