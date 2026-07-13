@@ -77,7 +77,11 @@
     if(!iris)return[];
     const source=iris.allObservations||{right:iris.right||[],left:iris.left||[]};
     const normalize=(items)=>Array.isArray(items)?items:(Array.isArray(items?.observations)?items.observations:[]);
-    return[["우안",source.right],["좌안",source.left]].flatMap(([eye,items])=>normalize(items).map((item)=>({...item,eyeLabel:eye,hour:Number(String(item.code||"").split("-")[0])}))).filter((item)=>Number.isFinite(item.hour));
+    return[["우안","right",source.right],["좌안","left",source.left]].flatMap(([eye,eyeKey,items])=>normalize(items).map((item)=>{
+      const rawHour=Number(String(item.code||"").split("-")[0]);
+      const hour=eyeKey==="left"&&Number.isFinite(rawHour)?(12-rawHour||12):rawHour;
+      return{...item,eyeKey:item.eyeKey||eyeKey,eyeLabel:eye,hour};
+    })).filter((item)=>Number.isFinite(item.hour));
   }
   function flattenHealth(health,includeNeutral=false){
     if(!health)return[];

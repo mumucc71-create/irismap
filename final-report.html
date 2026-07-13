@@ -174,8 +174,8 @@
     
   </main>
   <script src="iris-organ-db.js"></script>
-  <script src="care-engine.js"></script>
-  <script src="integrated-reading-engine.js?v=20260710-iris-photo-state-1"></script>
+  <script src="care-engine.js?v=20260713-left-eye-mirror-1"></script>
+  <script src="integrated-reading-engine.js?v=20260713-left-eye-mirror-1"></script>
   <script>
     const sessionPhone = normalizePhone(localStorage.getItem("irisMappingSession"));
     const iris = readJson("irisReadingResult");
@@ -242,7 +242,7 @@
     }
     function normalizeCurrentIrisMarker(item,eyeLabel) {
       const code=item.code||`${item.hour||""}-${item.ring||""}`;
-      const organ=irisOrganName({...item,code});
+      const organ=mappedIrisOrganName({...item,code},eyeLabel==="좌안"?"left":"right");
       const type=manualObservationTypeLabel(item.pattern||item.type);
       const score=Number(item.score||item.priorityScore||0)||manualStrengthScore(item.strength);
       return {...item,eyeLabel,code,organ,area:organ,type,score,priorityScore:Number(item.priorityScore||0)||score};
@@ -306,8 +306,9 @@
       if (!data) { if(target)target.innerHTML='<p class="empty">현재 계정의 홍채 판독 결과가 없습니다.</p><a class="missing-link" href="index.html">홍채 판독하러 가기</a>'; return []; }
       const grouped={};
       [["우안",data.right||[]],["좌안",data.left||[]]].forEach(([eye,items])=>items.forEach((item)=>{
-        const key=item.area||item.code||"미분류";
-        grouped[key] ||= {area:key,score:0,eyes:new Set(),consultation:observationConsultation(item.consultation||item.dbConsultation||"상담 시 참고합니다.")};
+        const area=mappedIrisOrganName(item,eye==="좌안"?"left":"right")||item.code||"미분류";
+        const key=`${eye}|${area}`;
+        grouped[key] ||= {area,score:0,eyes:new Set(),consultation:observationConsultation(item.consultation||item.dbConsultation||"상담 시 참고합니다.")};
         grouped[key].score += Number(item.priorityScore||item.score||0); grouped[key].eyes.add(eye);
       }));
       const top=Object.values(grouped).map((item)=>({...item,score:item.score+(item.eyes.size>1?5:0)})).sort((a,b)=>b.score-a.score).slice(0,3);
@@ -370,7 +371,10 @@
       if(!data) return [];
       const source=data.manualObservations||data.allObservations||{right:data.right||[],left:data.left||[]};
       const items=[["우안","right",source.right||[]],["좌안","left",source.left||[]]]
-        .flatMap(([eye,eyeKey,values])=>values.map((item)=>({...item,eyeKey:item.eyeKey||eyeKey,eyeLabel:item.eyeLabel||eye})))
+        .flatMap(([eye,eyeKey,values])=>values.map((item)=>{
+          const organ=mappedIrisOrganName(item,eyeKey);
+          return{...item,eyeKey:item.eyeKey||eyeKey,eyeLabel:item.eyeLabel||eye,organ,area:organ};
+        }))
         .filter(isManualIrisObservation);
       const seen=new Set();
       return items.filter((item)=>{
@@ -735,12 +739,25 @@
         "6-1":"방광중앙","6-2":"전립선","6-3":"골반혈관","6-4":"골반근육","6-5":"항문","6-6":"꼬리뼈",
         "7-1":"간","7-2":"담낭","7-3":"소장상부","7-4":"회장","7-5":"상행결장","7-6":"하복부",
         "8-1":"비장","8-2":"횡행결장","8-3":"췌장","8-4":"혈액순환","8-5":"림프","8-6":"면역",
-        "9-1":"폐하부","9-2":"흉벽","9-3":"횡격막","9-4":"림프순환",
+        "9-1":"폐하부","9-2":"흉벽","9-3":"횡격막","9-4":"림프순환","9-5":"혈액순환","9-6":"순환·림프",
         "10-1":"목근육","10-2":"어깨","10-3":"경부림프","10-4":"갑상선","10-5":"편도선","10-6":"비강",
         "11-1":"전두엽","11-2":"변연계","11-3":"운동피질","11-4":"청각","11-5":"평형감각","11-6":"자율신경",
         "12-1":"대뇌피질","12-2":"소뇌","12-3":"감정중추","12-4":"뇌간","12-5":"시상하부","12-6":"시각신경"
       };
       return map[String(code||"").trim()]||"";
+    }
+
+    function mirrorIrisCode(code) {
+      const match=String(code||"").match(/^(\d+)-(\d+)$/);
+      if(!match)return String(code||"");
+      const hour=Number(match[1]);
+      const mirroredHour=hour===12?12:12-hour;
+      return `${mirroredHour}-${match[2]}`;
+    }
+
+    function mappedIrisOrganName(item,eyeKey) {
+      if(eyeKey==="left")return irisOrganNameByCode(mirrorIrisCode(item?.code))||irisOrganName(item);
+      return irisOrganNameByCode(item?.code)||irisOrganName(item);
     }
 
     function renderCombined() {

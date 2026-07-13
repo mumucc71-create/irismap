@@ -33,7 +33,11 @@
     if(!iris) return [];
     const source=iris.allObservations||{right:iris.right||[],left:iris.left||[]};
     const normalizeItems=(items)=>Array.isArray(items)?items:(Array.isArray(items?.observations)?items.observations:[]);
-    return [["우안",source.right||[]],["좌안",source.left||[]]].flatMap(([eye,items])=>normalizeItems(items).map((item)=>({...item,eyeLabel:eye,hour:Number(String(item.code||"").split("-")[0])})));
+    return [["우안","right",source.right||[]],["좌안","left",source.left||[]]].flatMap(([eye,eyeKey,items])=>normalizeItems(items).map((item)=>{
+      const rawHour=Number(String(item.code||"").split("-")[0]);
+      const hour=eyeKey==="left"&&Number.isFinite(rawHour)?(12-rawHour||12):rawHour;
+      return{...item,eyeKey:item.eyeKey||eyeKey,eyeLabel:eye,hour};
+    }));
   }
   function scoreProfiles(findings, observations) {
     const text=findings.map((item)=>`${item.label} ${item.value}`).join(" ");

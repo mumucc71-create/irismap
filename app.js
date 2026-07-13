@@ -161,7 +161,7 @@ initializeAuth();
 init();
 
 async function init() {
-  state.map = await fetch("data/iris-map.json").then((response) => response.json());
+  state.map = await fetch("data/iris-map.json?v=20260713-left-eye-mirror-1").then((response) => response.json());
 
   const previousPhoto = localStorage.getItem("previousIrisPhoto");
   if (previousPhoto) {
@@ -1209,9 +1209,15 @@ function serializeEyeMarkers(eye) {
   });
 }
 
-function restoreEyeMarkers(eye, markers) {
+function restoreEyeMarkers(eye, markers, eyeKey = "") {
+  const regions = state.map?.eyes?.[eyeKey]?.regions || [];
   return (Array.isArray(markers) ? markers : []).map((marker) => {
     const restored = { ...marker };
+    const mappedRegion = regions.find((region) => region.code === restored.code);
+    if (mappedRegion) {
+      restored.organ = mappedRegion.organ;
+      restored.eye = state.map.eyes[eyeKey].label;
+    }
     if (Number.isFinite(restored.xRatio) && Number.isFinite(restored.yRatio)) {
       restored.x = Math.round((Number(eye.imageBounds?.x) || 0) + restored.xRatio * (Number(eye.imageBounds?.width) || VIEW_WIDTH));
       restored.y = Math.round((Number(eye.imageBounds?.y) || 0) + restored.yRatio * (Number(eye.imageBounds?.height) || VIEW_HEIGHT));
@@ -1402,7 +1408,7 @@ async function loadImageFromBlob(blob) {
   }
 }
 
-function restoreEyeGeometry(eye, geometry) {
+function restoreEyeGeometry(eye, geometry, eyeKey = "") {
   if (!geometry || !geometry.imageBounds) return false;
   const numericValues = [geometry.centerX, geometry.centerY, geometry.pupilRadius, geometry.irisRadius,
     geometry.imageBounds.x, geometry.imageBounds.y, geometry.imageBounds.width, geometry.imageBounds.height];
@@ -1419,7 +1425,7 @@ function restoreEyeGeometry(eye, geometry) {
   eye.detection = geometry.detection && Number.isFinite(geometry.detection.alignmentConfidence)
     ? { ...geometry.detection }
     : { pupilConfidence: 0, irisConfidence: 0, alignmentConfidence: 0, status: "재검출 필요", manual: false };
-  eye.markers = restoreEyeMarkers(eye, geometry.markers);
+  eye.markers = restoreEyeMarkers(eye, geometry.markers, eyeKey);
   return true;
 }
 
@@ -1642,11 +1648,11 @@ async function applyIrisSnapshot(snapshot) {
       eye.sourceBlob = await dataUrlToBlob(entry.displayImage);
       eye.normalizedBlob = null;
       eye.firebaseImageSynced = true;
-      if (!restoreEyeGeometry(eye, entry.geometry)) {
+      if (!restoreEyeGeometry(eye, entry.geometry, eyeKey)) {
         resetAndDetectEye(eye, eyeKey);
         normalizeEyeView(eye, NORMALIZED_IRIS_RADIUS);
       }
-      eye.markers = restoreEyeMarkers(eye, entry.markers || entry.geometry?.markers || []);
+      eye.markers = restoreEyeMarkers(eye, entry.markers || entry.geometry?.markers || [], eyeKey);
     }
     updateIrisEyePhotoState(ownerKey, eyeKey, Boolean(eye.image && eye.sourceBlob));
     state.eyes[eyeKey] = eye;
@@ -1846,7 +1852,7 @@ async function restoreSavedEyeImagesForCurrentUser(options = {}) {
       if (record.fromFirebase) {
         await runEyePhotoStore("readwrite", (store) => store.put(record)).catch(() => {});
       }
-      const geometryRestored = restoreEyeGeometry(eye, record.geometry);
+      const geometryRestored = restoreEyeGeometry(eye, record.geometry, eyeKey);
       const hasSavedDetection = Number(eye.detection?.alignmentConfidence || 0) > 0;
       if (!geometryRestored || !hasSavedDetection) {
         resetAndDetectEye(eye, eyeKey);
@@ -1855,13 +1861,13 @@ async function restoreSavedEyeImagesForCurrentUser(options = {}) {
       const localMarkers = readEyeMarkersFromLocalStorage(ownerKey, eyeKey);
       const storedGeometryMarkers = record.geometry?.markers;
       if (!record.fromFirebase && Array.isArray(storedGeometryMarkers)) {
-        eye.markers = restoreEyeMarkers(eye, storedGeometryMarkers);
+        eye.markers = restoreEyeMarkers(eye, storedGeometryMarkers, eyeKey);
         persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
       } else if (Array.isArray(record.remoteMarkers)) {
-        eye.markers = restoreEyeMarkers(eye, record.remoteMarkers);
+        eye.markers = restoreEyeMarkers(eye, record.remoteMarkers, eyeKey);
         persistEyeMarkersToLocalStorage(ownerKey, eyeKey, eye);
       } else if (localMarkers.length) {
-        eye.markers = restoreEyeMarkers(eye, localMarkers);
+        eye.markers = restoreEyeMarkers(eye, localMarkers, eyeKey);
       }
       console.info("[IRIS apply diagnostics:eye]", {
         eyeKey,
@@ -3533,7 +3539,8 @@ function buildManualObservationReading(eyeKey) {
   return markers.map((marker, index) => {
     const code = marker.code || `${marker.hour || ""}-${marker.ring || ""}`;
     const info = typeof irisOrganDB !== "undefined" ? irisOrganDB[code] : null;
-    const area = marker.organ || info?.title || code || "관찰 영역";
+    const mappedRegion = state.map?.eyes?.[eyeKey]?.regions?.find((region) => region.code === code);
+    const area = mappedRegion?.organ || marker.organ || info?.title || code || "관찰 영역";
     const type = manualObservationLabels[marker.pattern] || marker.type || "점";
     const score = manualStrengthScore(marker.strength);
     const consultation = `${marker.clockTime || `${marker.hour || ""}시`} 위치(${code})에서 ${buildObservationMeaningSentence(area, marker)}`;
@@ -3858,7 +3865,7 @@ function renderManualObservationGuide(marker) {
 
 function buildOrganGuide(marker) {
   const db = typeof irisOrganDB !== "undefined" ? irisOrganDB[marker.code] : null;
-  const title = cleanKoreanText(db?.title) || marker.organ;
+  const title = cleanKoreanText(marker.organ) || cleanKoreanText(db?.title);
   const reactions = Array.isArray(db?.reactions) ? db.reactions.map(cleanKoreanText).filter(Boolean).slice(0, 3) : [];
   const functions = Array.isArray(db?.functions) ? db.functions.map(cleanKoreanText).filter(Boolean).slice(0, 2) : [];
   const fallback = getSimpleOrganGuide(title || marker.organ);
