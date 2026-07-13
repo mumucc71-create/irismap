@@ -3538,7 +3538,7 @@ function buildManualObservationReading(eyeKey) {
   const markers = Array.isArray(eye?.markers) ? eye.markers : [];
   return markers.map((marker, index) => {
     const code = marker.code || `${marker.hour || ""}-${marker.ring || ""}`;
-    const info = typeof irisOrganDB !== "undefined" ? irisOrganDB[code] : null;
+    const info = irisOrganInfoForEye(eyeKey, code);
     const mappedRegion = state.map?.eyes?.[eyeKey]?.regions?.find((region) => region.code === code);
     const area = mappedRegion?.organ || marker.organ || info?.title || code || "관찰 영역";
     const type = manualObservationLabels[marker.pattern] || marker.type || "점";
@@ -3662,7 +3662,8 @@ function buildReadingSummary(results) {
   const grouped = {};
 
   results.forEach((item) => {
-    const info = typeof irisOrganDB !== "undefined" ? irisOrganDB[item.code] : null;
+    const candidateInfo = irisOrganInfoForEye(item.eyeKey || item.eyeLabel || item.eye, item.code);
+    const info = organGuideMatches(item.area, candidateInfo?.title) ? candidateInfo : null;
     const title = item.area || info?.title || item.code;
     if (!grouped[title]) {
       grouped[title] = {
@@ -3864,8 +3865,9 @@ function renderManualObservationGuide(marker) {
 }
 
 function buildOrganGuide(marker) {
-  const db = typeof irisOrganDB !== "undefined" ? irisOrganDB[marker.code] : null;
-  const title = cleanKoreanText(marker.organ) || cleanKoreanText(db?.title);
+  const candidateDb = irisOrganInfoForEye(marker.eyeKey || marker.eyeLabel || marker.eye, marker.code);
+  const title = cleanKoreanText(marker.organ) || cleanKoreanText(candidateDb?.title);
+  const db = organGuideMatches(title, candidateDb?.title) ? candidateDb : null;
   const reactions = Array.isArray(db?.reactions) ? db.reactions.map(cleanKoreanText).filter(Boolean).slice(0, 3) : [];
   const functions = Array.isArray(db?.functions) ? db.functions.map(cleanKoreanText).filter(Boolean).slice(0, 2) : [];
   const fallback = getSimpleOrganGuide(title || marker.organ);
@@ -3938,6 +3940,7 @@ function getSimpleOrganGuide(organ) {
     { keys: ["시신경", "시각", "눈", "망막", "안압"], summary: "눈 피로, 시야 부담, 건조감, 두통처럼 눈과 머리 피로를 함께 살펴보는 부위입니다.", points: ["눈 피로", "두통·시야 흐림"] },
     { keys: ["유문", "위", "위산", "위 점막"], summary: "위에서 장으로 음식이 넘어가는 소화 흐름과 관련해 참고하는 부위입니다.", points: ["속 더부룩함·체함·역류감", "식사 후 불편감"] },
     { keys: ["갑상선"], summary: "목 앞쪽 호르몬·대사 조절과 관련해 참고하는 부위입니다.", points: ["피로·체중 변화", "목 앞쪽 불편감·두근거림"] },
+    { keys: ["어깨", "목근육", "골반근육", "꼬리뼈"], summary: "근육과 관절의 움직임, 자세 부담, 반복적인 긴장과 함께 참고하는 부위입니다.", points: ["근육 긴장·통증", "움직임 제한·저림"] },
     { keys: ["편도", "비강", "기관지", "폐", "흉막", "호흡"], summary: "호흡기와 상부 호흡기 컨디션을 참고하는 부위입니다.", points: ["기침·가래·비염", "숨참·얕은 호흡"] },
     { keys: ["간", "담낭"], summary: "피로, 담즙 흐름, 지방 소화, 대사 부담과 함께 보는 부위입니다.", points: ["피로·회복 지연", "기름진 음식 후 더부룩함"] },
     { keys: ["소장", "회장", "결장", "직장", "장"], summary: "소화 흡수와 배변 리듬을 참고하는 부위입니다.", points: ["변비·설사", "가스·복부 팽만"] },
@@ -3950,6 +3953,27 @@ function getSimpleOrganGuide(organ) {
     summary: "해당 위치의 생활 증상과 문진 응답을 함께 대조해 보는 참고 부위입니다.",
     points: ["현재 불편감", "과거 부담 흔적"]
   };
+}
+
+function mirrorIrisReferenceCode(code) {
+  const match = String(code || "").match(/^(\d+)-(\d+)$/);
+  if (!match) return String(code || "");
+  const hour = Number(match[1]);
+  const mirroredHour = hour === 12 ? 12 : 12 - hour;
+  return `${mirroredHour}-${match[2]}`;
+}
+
+function irisOrganInfoForEye(eye, code) {
+  if (typeof irisOrganDB === "undefined") return null;
+  const isLeft = eye === "left" || eye === "좌안";
+  return irisOrganDB[isLeft ? mirrorIrisReferenceCode(code) : code] || null;
+}
+
+function organGuideMatches(organ, dbTitle) {
+  const normalize = (value) => String(value || "").replace(/[\s·ㆍ()\/\-]/g, "");
+  const left = normalize(organ);
+  const right = normalize(dbTitle);
+  return Boolean(left && right && (left.includes(right) || right.includes(left)));
 }
 
 function toCircledNumber(value) {
@@ -3978,15 +4002,15 @@ function readEyeSigns(eyeKey, includeAll = false) {
       const observation = scanCellForReading(imageData, eye, hour, ring);
       if (!observation.patterns.length) continue;
 
-      const db = typeof irisObservationDB !== "undefined" ? irisObservationDB[eyeKey]?.[code] : null;
+      const mappedRegion = state.map?.eyes?.[eyeKey]?.regions?.find((region) => region.code === code);
       const strongestPattern = [...observation.patterns]
         .sort((a, b) => (b.weight - a.weight) || (b.confidence - a.confidence))[0];
 
       results.push({
         code,
         eye: eyeKey === "right" ? "우안" : "좌안",
-        area: db?.["대표부위"] || irisOrganDB?.[code]?.title || code,
-        dbConsultation: db?.["상담표현"] || "해당 영역이 체크됩니다.",
+        area: mappedRegion?.organ || irisOrganInfoForEye(eyeKey, code)?.title || code,
+        dbConsultation: `${mappedRegion?.organ || "해당 부위"} 관련 영역이 체크됩니다.`,
         patterns: observation.patterns,
         type: strongestPattern.type,
         score: strongestPattern.confidence,
@@ -4425,7 +4449,8 @@ function renderIrisMapping(results) {
   }
 
   detailMap.innerHTML = results.map(item => {
-    const info = irisOrganDB[item.code];
+    const candidateInfo = irisOrganInfoForEye(item.eyeKey || item.eyeLabel || item.eye, item.code);
+    const info = organGuideMatches(item.area, candidateInfo?.title) ? candidateInfo : null;
     if (!info) return "";
 
     return `
@@ -4462,14 +4487,15 @@ function renderAiSummary(results) {
   const grouped = {};
 
   results.forEach((item) => {
-    const info = irisOrganDB[item.code];
+    const candidateInfo = irisOrganInfoForEye(item.eyeKey || item.eyeLabel || item.eye, item.code);
+    const info = organGuideMatches(item.area, candidateInfo?.title) ? candidateInfo : null;
     if (!info) return;
 
-    const key = info.title;
+    const key = item.area || info.title;
 
     if (!grouped[key]) {
       grouped[key] = {
-        title: info.title,
+        title: item.area || info.title,
         scores: [],
         signs: [],
         reactions: info.reactions || []
